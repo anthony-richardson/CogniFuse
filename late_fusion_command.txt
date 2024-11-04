@@ -1,0 +1,3 @@
+python -m multimodal.train.cross_validate_late_fusion --modality_save_dirs unimodal/save/eeg/2024.10.15-07:30:11 unimodal/save/ppg/2024.10.15-07:32:17
+
+ControlledSwitchingLowHigh
