@@ -6,7 +6,6 @@ from sklearn.metrics import accuracy_score, f1_score
 import numpy as np
 
 from utils import logger
-#from utils import dist_util
 from tqdm import tqdm
 
 
@@ -19,7 +18,6 @@ class TrainingLoop:
         self.validation_data = validation_data
         self.batch_size = args.batch_size
         self.lr = args.lr
-        #self.log_interval = args.log_interval
         self.save_interval = args.save_interval
         self.weight_decay = args.weight_decay
         self.step = 0
@@ -38,7 +36,6 @@ class TrainingLoop:
             self.modality_name = None
 
         self.is_multimodal = args.multimodal
-        #self.meta_info_to_class_mapper = meta_info_to_class_mapper
 
         self.opt = AdamW(
             self.model.parameters(),
@@ -58,7 +55,6 @@ class TrainingLoop:
 
         for epoch in range(self.num_epochs):
             self.epoch = epoch
-            #print(f'Starting epoch {epoch}')
             train_epoch_info = self.run_epoch(split='train')
             self.report_metrics(train_epoch_info, split='train')
 
@@ -101,7 +97,6 @@ class TrainingLoop:
                 x = [modality_data[modality_name].type(torch.float).to(self.device) for
                      modality_name in ['eeg', 'ppg', 'eda', 'resp']]
             else:
-                #print(self.modality_name)
                 x = modality_data[self.modality_name].type(torch.float).to(self.device)
             # Cross entropy is only implemented on LongTensor
             y_target = self.task_tools.map_meta_info_to_class(
@@ -216,8 +211,4 @@ def get_blob_logdir():
 
 def log_metrics_dict(metrics, split):
     for key, values in metrics.items():
-        '''if split == 'train':
-            logger.logkv_mean(f'{split}_{key}', values)
-        else:
-            # For the val'''
         logger.logkv(f'{split}_{key}', values)

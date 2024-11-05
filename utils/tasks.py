@@ -18,13 +18,6 @@ import torch
 '''
 
 
-'''def get_task_tools(name):
-    if name == 'ControlledSwitchingLowHigh':
-        return ControlledSwitchingLowHigh()
-    else:
-        raise ValueError(f'Unsupported task name [{name}]')'''
-
-
 class Task(ABC):
     # Returns a dictionary that maps
     # from task name to class number.
@@ -46,20 +39,6 @@ class Task(ABC):
         class_labels = torch.as_tensor(class_labels)
 
         return class_labels
-
-
-'''class ControlledSwitchingLowHigh(Task):
-    @staticmethod
-    def get_mapper():
-        mapper = {
-            'Relax_before_LCT': 0,
-            'Relax_during_LCT': 0,
-            'Relax_after_LCT': 0,
-            'SwitchingTask_1': 1,
-            'SwitchingTask_2': 1,
-            'SwitchingTask_3': 1
-        }
-        return mapper'''
 
 
 # c0 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516

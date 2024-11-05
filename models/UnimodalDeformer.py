@@ -144,7 +144,7 @@ class Conv2dWithConstraint(nn.Conv2d):
         return super(Conv2dWithConstraint, self).forward(x)
 
 
-class Deformer(nn.Module):
+class UnimodalDeformer(nn.Module):
     def cnn_block(self, out_chan, kernel_size, num_chan):
         return nn.Sequential(
             Conv2dWithConstraint(1, out_chan, kernel_size, padding=self.get_padding(kernel_size[-1]), max_norm=2),
@@ -211,9 +211,9 @@ def count_parameters(model):
 
 if __name__ == "__main__":
     data = torch.ones((16, 32, 1000))
-    emt = Deformer(num_chan=32, num_time=1000, temporal_kernel=11, num_kernel=64,
-                   emb_dim=256, out_dim=2, depth=4, heads=16,
-                   mlp_dim=16, dim_head=16, dropout=0.5)
+    emt = UnimodalDeformer(num_chan=32, num_time=1000, temporal_kernel=11, num_kernel=64,
+                           emb_dim=256, out_dim=2, depth=4, heads=16,
+                           mlp_dim=16, dim_head=16, dropout=0.5)
     print(emt)
     print(count_parameters(emt))
 

@@ -53,7 +53,6 @@ def is_valid(d):
 
 def main():
     data = np.load(os.path.join(os.getcwd(), 'data', 'data.npy'), allow_pickle=True)
-
     print(f'Number of all samples: {len(data)}')
 
     data_with_all_modalities_list = []
@@ -74,7 +73,6 @@ def main():
     )
 
     print(f'Number of samples that have all modalities: {len(data_with_all_modalities)}')
-
     np.save(os.path.join(os.getcwd(), 'data', 'data_with_all_modalities.npy'), data_with_all_modalities)
 
 

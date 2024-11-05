@@ -2,9 +2,6 @@ import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader
-from scipy import signal
-
-import matplotlib.pyplot as plt
 
 
 class CogniFitDataset(torch.utils.data.Dataset):
@@ -16,24 +13,12 @@ class CogniFitDataset(torch.utils.data.Dataset):
         filtered_data = []
         # Filtering
         for d in complete_data:
-            #scenario = d['task']
             if d['difficulty'] > 0:
-                # d['difficulty'] -= 1
                 d['task'] += f'_{d['difficulty']}'
 
             if ((tasks is None or d['task'] in tasks) and
                     (difficulties is None or d['difficulty'] in difficulties)):
 
-                # Enumerating tasks
-                #d['task'] = task_enumerator[d['task']]
-
-                # Changing to zero based labels (originally 1, 2, 3)
-                '''scenario = d['task']
-                if d['difficulty'] > 0:
-                    #d['difficulty'] -= 1
-                    scenario += f"_{d['difficulty']}"'''
-
-                #filtered_data.append(d)
                 filtered_data.append((
                     d['participant_id'],
                     d['task'],
@@ -48,20 +33,12 @@ class CogniFitDataset(torch.utils.data.Dataset):
         self.data = np.array(filtered_data, dtype=[
                 ('participant_id', 'i4'),
                 ('scenario', 'U30'),
-                #('difficulty', 'i4'),
                 ('eeg', 'O'),
                 ('ppg', 'O'),
                 ('eda', 'O'),
                 ('resp', 'O')
             ]
         )
-
-        #print(set(self.data['difficulty']))
-
-        #for e in set(self.data['task']):
-        #    print(e)
-
-        #exit()
 
     def __len__(self):
         return len(self.data)
@@ -75,22 +52,10 @@ class CogniFitDataset(torch.utils.data.Dataset):
 
         meta_info = {}
 
-        #for key in ['participant_id', 'task', 'difficulty']:
         for key in ['participant_id', 'scenario']:
             meta_info[key] = entry[key]
 
         return modality_data, meta_info
-
-
-'''task_enumerator = {
-    'Relax_before_LCT': 0,          # pause before LCT task (controlled, no LCT)
-    'Relax_during_LCT': 1,          # pause in between LCT task (controlled, no LCT)
-    'Relax_after_LCT': 2,           # pause after LCT task (controlled, no LCT)
-    'SwitchingTask': 3,             # Switching paradigm (controlled, no LCT)
-    'LCT_Baseline': 4,              # LCT without additional task (uncontrolled, LCT)
-    'SwitchBackAuditive': 5,        # LCT with added auditive task (uncontrolled, LCT + auditive)
-    'VisualSearchTask': 6           # LCT with added visual task (uncontrolled, LCT + visual)
-}'''
 
 
 def get_data_loader(batch_size, tasks, data_dir, split, shuffle=True):

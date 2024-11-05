@@ -2,11 +2,13 @@ import numpy as np
 import os
 import random
 
-# There are 134 participants with at least one session where all modalities are recorded.
-# We choose to randomly, but fixed, separate 10% of the participants for testing.
-# For the remaining participants perform 10-fold cross validation.
-# The resulting splits are 108:12:14 in participants or 81:9:10 in percent.
-# We fix and store therese folds so that all models may use the same splits.
+'''
+    There are 134 participants with at least one session where all modalities are recorded.
+    We choose to randomly, but fixed, separate 10% of the participants for testing.
+    For the remaining participants perform 10-fold cross validation.
+    The resulting splits are 108:12:14 in participants or 81:9:10 in percent.
+    We fix and store therese folds so that all models may use the same splits.
+'''
 
 
 def create_array(data_list):

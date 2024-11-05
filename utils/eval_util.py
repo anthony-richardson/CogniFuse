@@ -6,7 +6,6 @@ import json
 import traceback
 import pandas as pd
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-from sklearn.metrics import accuracy_score
 
 from utils.model_util import count_parameters
 
@@ -92,7 +91,6 @@ def get_pass_through_args(args):
     pass_trough_args = []
     for arg in parser_args:
         pass_trough_args.append('--' + arg)
-        #if arg != 'cuda': # and arg != 'multimodal':
         val = str(getattr(args, arg))
         pass_trough_args.append(val)
     return pass_trough_args
@@ -115,27 +113,19 @@ def save_args(args, create_model_fn):
     args_dict['nr_of_parameters'] = num_parameters
     save_dict(args_dict, args.save_dir, 'args')
 
-    '''save_dir = args.save_dir
-    os.makedirs(save_dir)
-    args_path = os.path.join(save_dir, 'args.json')
-    with open(args_path, 'w') as fw:
-        json.dump(args_dict, fw, indent=4)'''
-
 
 def get_y_targets(data_loader, task_tools):
     targets = []
     for modality_data, meta_info in data_loader:
         y_target = task_tools.map_meta_info_to_class(
-            task_tools, meta_info=meta_info) #.type(torch.LongTensor).to(device)
+            task_tools, meta_info=meta_info)
         targets.append(y_target)
     targets = torch.cat(targets, dim=0)
     return targets
 
 
-def run_model_on_eval(model, data_loader, task_tools, device, modality=None):
+def run_model_on_eval(model, data_loader, device, modality=None):
     predictions = []
-    #targets = []
-    #accs = []
     with torch.no_grad():
         for modality_data, meta_info in data_loader:
             if modality is None:
@@ -143,31 +133,10 @@ def run_model_on_eval(model, data_loader, task_tools, device, modality=None):
                         modality_name in ['eeg', 'ppg', 'eda', 'resp']]
             else:
                 x = modality_data[modality].type(torch.float).to(device)
-                
-            y_target = task_tools.map_meta_info_to_class(
-                task_tools, meta_info=meta_info).type(torch.LongTensor).to(device)
 
             output = model(x)
             y_prediction = F.softmax(output, dim=-1)
-
-            #targets.append(y_target)
-
             predictions.append(y_prediction)
 
-            #predicted_labels = torch.argmax(y_prediction, dim=-1)
-            #accuracy = accuracy_score(y_target.cpu().detach().numpy(), predicted_labels.cpu().detach().numpy())
-            #print(accuracy)
-            #accs.append(accuracy)
-            ####
-
-
-    #print(f'avg Accuracy: {np.mean(accs)}')
-
     predictions = torch.cat(predictions, dim=0)
-    #targets = torch.cat(targets, dim=0)
-    #predicted_labels = torch.argmax(predictions, dim=-1)
-    #accuracy = accuracy_score(targets.cpu().detach().numpy(), predicted_labels.cpu().detach().numpy())
-
-    #exit()
-
     return predictions

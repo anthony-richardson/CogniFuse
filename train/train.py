@@ -1,5 +1,4 @@
 import os
-import json
 
 from utils.model_util import count_parameters, create_multimodal_deformer, create_unimodal_deformer
 from load.load_data import get_data_loader
@@ -21,13 +20,8 @@ def main():
 
     fixseed(args.seed)
 
-    if not os.path.exists(args.save_dir):
-        os.makedirs(args.save_dir)
-        args_path = os.path.join(args.save_dir, 'args.json')
-        with open(args_path, 'w') as fw:
-            json.dump(vars(args), fw, indent=4)
-
-    save_dir = os.path.join(args.save_dir, args.fold)
+    base_dir = args.save_dir
+    save_dir = os.path.join(base_dir, args.fold)
     data_dir = os.path.join(args.data_dir, args.fold)
 
     num_parameters = count_parameters(deformer_model)
@@ -49,8 +43,8 @@ def main():
         split='validation'
     )
 
-    train_platform = TensorboardPlatform(save_dir)
-    train_platform.report_args(args, name='Args')
+    train_platform = TensorboardPlatform(log_dir=save_dir, args_dir=base_dir)
+    train_platform.report_args(args=args, name='args')
 
     training_loop = TrainingLoop(
         args=args,
@@ -59,8 +53,7 @@ def main():
         task_tools=task_tools,
         train_data=train_data,
         validation_data=validation_data,
-        save_dir=save_dir#,
-        #modality_name=args.modality
+        save_dir=save_dir
     )
     training_loop.run_loop()
 

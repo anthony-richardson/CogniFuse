@@ -120,7 +120,6 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
     if args.split == 'validation':
         evaluation_data = {}
         # Creating data loaders for the validation data of each fold.
-        # Shuffling must be turned off so that the labels order is consistent.
         for f in folds:
             fold_data_dir = os.path.join(args.data_dir, f)
             fold_validation_data = get_data_loader(
@@ -128,17 +127,18 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
                 tasks=task_tools.get_mapper().keys(),
                 data_dir=fold_data_dir,
                 split=args.split,
+                # Shuffling must be turned off for consistent labeling.
                 shuffle=False
             )
             evaluation_data[f] = fold_validation_data
     elif args.split == "test":
         # Creating a data loader for the test data.
-        # Shuffling must be turned off so that the labels order is consistent.
         evaluation_data = get_data_loader(
             batch_size=args.batch_size,
             tasks=task_tools.get_mapper().keys(),
             data_dir=args.data_dir,
             split=args.split,
+            # Shuffling must be turned off for consistent labeling.
             shuffle=False
         )
     else:
@@ -171,7 +171,7 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
             unimodal_model, model_device = get_unimodal_model(args, model_path, model_args)
 
             unimodal_predictions = run_model_on_eval(
-                unimodal_model, data_loader, task_tools, model_device, modality=modality)
+                unimodal_model, data_loader, model_device, modality=modality)
 
             unimodal_predictions = torch.mul(
                 unimodal_predictions, modality_weights[modality]

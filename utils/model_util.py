@@ -1,4 +1,4 @@
-from models.EEGDeformer import Deformer
+from models.UnimodalDeformer import UnimodalDeformer
 from models.MultiChannelDeformer import MultiChannelDeformer
 from models.EarlyFusionDeformer import EarlyFusionDeformer
 from models.IntermediateFusionDeformer import IntermediateFusionDeformer
@@ -10,7 +10,7 @@ def load_model(model, state_dict):
 
 
 def create_unimodal_deformer(args):
-    deformer_model = Deformer(
+    deformer_model = UnimodalDeformer(
         num_chan=args.num_chan,
         num_time=args.num_time,
         temporal_kernel=args.temporal_kernel,
