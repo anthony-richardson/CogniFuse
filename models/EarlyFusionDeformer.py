@@ -8,9 +8,11 @@ from einops.layers.torch import Rearrange
 #from utils.model_util import count_parameters
 
 # TODO
-# - think about and maybe replace random positional encoding by sin/cos encoding
-# (random does not seem like it would guarantee no repetitions)
-
+#  - think about and maybe replace random positional encoding by sin/cos encoding
+#  (random does not seem like it would guarantee no repetitions)
+#  - maybe the random operation also contributes to the large drop in training
+#  speed when forcing deterministic behaviour dor reproducibility
+#  - try sin/cos and compare if it still works and is as good as before
 
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
