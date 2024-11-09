@@ -14,7 +14,7 @@ from einops.layers.torch import Rearrange
 #  - try sin/cos and compare if it still works and is as good as before
 
 class CrossChannelTransformerEncoderLayer(nn.Module):
-    def __init__(self, input_dimension, number_of_heads, dim_head, dropout):
+    def __init__(self, input_dimension, number_of_heads, dim_head, mlp_dim, dropout, out_dim=None):
         super(CrossChannelTransformerEncoderLayer, self).__init__()
         
         self.sa = Attention(
@@ -23,21 +23,32 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
             heads=number_of_heads,
             dim_head=dim_head,
             dropout=dropout,
+            create_heads=False#,
+            #out_dim=input_dimension if out_dim is None else out_dim
         )
         
         self.ffwd = FeedForward(
             dim=input_dimension,
-            hidden_dim=input_dimension * 4,
+            hidden_dim=mlp_dim, #input_dimension * 4,
             # maybe reduce this to *2. But first do num kernels and emb dim. Then see if the impact is large
             #hidden_dim=input_dimension * 2,
-            out_dim=input_dimension
+            out_dim=out_dim if out_dim is not None else input_dimension #input_dimension
         )
+
+        #self.ffwd = nn.Linear(input_dimension, out_dim if out_dim is not None else input_dimension)
         
 
     def forward(self, x, other_channels_output):
-        x_agg = torch.cat(other_channels_output, dim=-1)
+        x_agg = torch.cat(other_channels_output, dim=-2) #dim=-1)
+        print(f'hi: {x.shape}')
+
         x = x + self.sa(x, x_agg, x_agg)
-        x = x + self.ffwd(x)
+
+        print(x.shape)
+
+        #exit()
+        #x = x + self.ffwd(x)
+        x = self.ffwd(x)
 
         #exit()
         return x
@@ -64,37 +75,49 @@ class FeedForward(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, q_dim, heads=8, dim_head=64, dropout=0.):
+    def __init__(self, q_dim, heads=8, dim_head=64, dropout=0., create_heads=True, out_dim=None):
         super().__init__()
         inner_dim = dim_head * heads
         project_out = not (heads == 1 and dim_head == q_dim)
 
+        self.create_heads = create_heads
         self.heads = heads
         self.scale = dim_head ** -0.5
 
         self.attend = nn.Softmax(dim=-1)
-        
-        #self.to_q = nn.Linear(q_dim, inner_dim, bias=False)
-        #self.to_k = nn.Linear(kv_dim, inner_dim, bias=False)
-        #self.to_v = nn.Linear(kv_dim, inner_dim, bias=False)
 
-        #self.to_out = nn.Sequential(
-        #    nn.Linear(inner_dim, q_dim),
-        #    nn.Dropout(dropout)
-        #) if project_out else nn.Identity()
+        self.q_dim = q_dim
+        
+        if self.create_heads:
+            self.to_q = nn.Linear(q_dim, inner_dim, bias=False)
+            self.to_k = nn.Linear(q_dim, inner_dim, bias=False)
+            self.to_v = nn.Linear(q_dim, inner_dim, bias=False)
+
+        if out_dim is not None:
+            print("hm")
+            self.to_out = nn.Linear(inner_dim, out_dim)
+        else:
+            print("hmhm")
+            self.to_out = nn.Sequential(
+                nn.Linear(inner_dim, q_dim),
+                # TODO: why the dropourt here?
+                nn.Dropout(dropout)
+            ) if project_out else nn.Identity()
 
     def forward(self, q, k, v):
         print(q.shape)
         print(k.shape)
         print(v.shape)
 
-        #qkv = [
-        #    self.to_q(q), 
-        #    self.to_k(k),
-        #    self.to_v(v)
-        #]
-
-        qkv = [q, k, v]
+        print(self.q_dim)
+        if self.create_heads:
+            qkv = [
+                self.to_q(q), 
+                self.to_k(k),
+                self.to_v(v)
+            ]
+        else:
+            qkv = [q, k, v]
 
         #print(qkv[0].shape)
         #print(qkv[1].shape)
@@ -112,7 +135,7 @@ class Attention(nn.Module):
 
         out = torch.matmul(attn, v)
         out = rearrange(out, 'b h n d -> b n (h d)')
-        return out #self.to_out(out)
+        return self.to_out(out)
 
 
 class Transformer(nn.Module):
@@ -171,12 +194,13 @@ class Transformer(nn.Module):
                 # TODO: allow support for non matching by adding linear layers in case of miss match
 
                 depth_layers.append(nn.ModuleList([
+                    #nn.Linear(dim, inner_dim, bias=False),
                     Attention(q_dim=dim, heads=heads, dim_head=dim_head, dropout=dropout),
                     FeedForward(dim, mlp_dim, dim, dropout=dropout),
                     self.cnn_block(in_chan=in_chan, kernel_size=fine_grained_kernel, dp=dropout),
                     nn.Linear(dim, inner_dim, bias=False),
-                    CrossChannelTransformerEncoderLayer(input_dimension=in_chan, number_of_heads=heads, 
-                                                        dim_head=dim_head, dropout=dropout)
+                    CrossChannelTransformerEncoderLayer(input_dimension=inner_dim, number_of_heads=heads, 
+                                                        dim_head=dim_head, mlp_dim=mlp_dim, dropout=dropout, out_dim=dim)
                 ]))
 
             self.layers.append(depth_layers)
@@ -189,52 +213,69 @@ class Transformer(nn.Module):
             # list of fine output of each modality at that specific depth
             depth_dense_feature = []  
 
-            depth_output_heads = []
+            #depth_output_heads = []
 
             # HCT blocks, one for each modality
             for i, (attn, ff, cnn, head_creator, _) in enumerate(depth_layers):
                 # Modality specific tensor
                 x = channels_output[i]
 
+                
+                
                 print(x.shape)
-
                 x_cg = self.pool(x)
                 print(x_cg.shape)
-
-                
+                #x_cg_heads = self_att_head_creator(x_cg)
 
 
                 # TODO: here already take projected one and then also project back into time space like previouly
                 x_cg = attn(x_cg, x_cg, x_cg) + x_cg
+
+                
+
                 x_fg = cnn(x)
                 x_info = self.get_info(x_fg)  # (b, in_chan)
                 depth_dense_feature.append(x_info)
                 # TODO think about if this ff can be directly used to get the heads
                 x = ff(x_cg) + x_fg
+
+
+                x = head_creator(x)
+
+                
                 channels_output[i] = x
 
-                print(x.shape)
-                exit()
+                print(f"x after self loop {x.shape}")
+                #exit()
 
-                depth_heads = head_creator(x)
-                depth_output_heads.append(depth_heads)
+                
+                #depth_output_heads.append(depth_heads)
 
             dense_feature.append(depth_dense_feature)
 
+            # TODO: also fix this new channels output bug in other models!!!
+            new_channels_output = []
             # Cross attentions blocks, one for each modality
             for i, (_, _, _, _, cross_attn) in enumerate(depth_layers):
                 # Modality specific tensor
-                #x = channels_output[i]
-                x = depth_output_heads[i]
+                x = channels_output[i]
+                #x = depth_output_heads[i]
 
                 x = cross_attn(
-                    x, [h for n, h in enumerate(depth_output_heads) if n != i]
+                    x, [h for n, h in enumerate(channels_output) if n != i]
                 )
 
-                print("hi")
-                exit()
 
-                channels_output[i] = x
+                print(x.shape)
+
+                print("hiii")
+                #exit()
+
+                new_channels_output.append(x)
+
+                #channels_output[i] = x
+
+            channels_output = new_channels_output
 
         modality_specific_emb = []
         for i, chan_out in enumerate(channels_output):
@@ -285,7 +326,10 @@ class MultiChannelDeformer(nn.Module):
             Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1), padding=0, max_norm=2),
             nn.BatchNorm2d(out_chan),
             nn.ELU(),
-            nn.MaxPool2d((1, 2), stride=(1, 2))
+            # TODO: also remove this in other models! generally make them consistent 
+            # TODO: remove this pooling. I think this causes double pooling right after eachother because
+            # teh transfomrer also does pooling in the beginning
+            #nn.MaxPool2d((1, 2), stride=(1, 2))
         )
 
     def __init__(self, *, dims, num_channels, temporal_kernel, num_kernels,
@@ -298,7 +342,7 @@ class MultiChannelDeformer(nn.Module):
             cnn_encoder = self.cnn_block(out_chan=num_kern, kernel_size=(1, temporal_kernel), num_chan=chan)
             self.cnn_encoders.append(cnn_encoder)
 
-        dims = [int(0.5 * d) for d in dims]  # embedding size after the first cnn encoders
+        #dims = [int(0.5 * d) for d in dims]  # embedding size after the first cnn encoders
 
         self.to_patch_embedding = Rearrange('b k c f -> b k (c f)')
 
@@ -346,7 +390,7 @@ if __name__ == "__main__":
         heads=16,
         dim_head=16,
         mlp_dim=16,
-        num_kernels=[64, 16, 16, 16],
+        num_kernels=[64, 4, 4, 4],
         emb_dim=256,
         out_dim=2,
         temporal_kernel=13,
