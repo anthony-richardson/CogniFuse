@@ -10,14 +10,8 @@ from utils.model_util import create_model
 
 
 def main():
-    #multimodal = is_multimodal()
-    #if multimodal:
     args = train_args(cross_validate=True)
     save_args(args, create_model)
-    #else:
-        #args = unimodal_deformer_train_args(cross_validate=True)
-    #    args = train_args(cross_validate=True)
-    #    save_args(args, create_model)
 
     fixseed(args.seed)
 
