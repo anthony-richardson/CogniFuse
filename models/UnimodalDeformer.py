@@ -6,6 +6,7 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 
 #from utils.model_util import count_parameters
+from utils.model_util import BaseBenchmarkModel
 
 # TODO
 #  - think about and maybe replace random positional encoding by sin/cos encoding
@@ -146,14 +147,59 @@ class Conv2dWithConstraint(nn.Conv2d):
         return super(Conv2dWithConstraint, self).forward(x)
 
 
-class UnimodalDeformer(nn.Module):
+class UnimodalDeformer(nn.Module, BaseBenchmarkModel):
+    @staticmethod
+    def add_model_options(parser_group, default_out_dim, modality=None):
+        #group = parser.add_argument_group('model')
+
+        if modality is None:
+            raise ValueError('Modality not specified')
+
+        #modality = BaseBenchmarkModel.get_unimodal_modality()
+        if modality == "eeg":
+            num_chan = 16
+            num_kernel = 64
+            num_time = 4 * 128
+            emb_dim = 256
+        else:
+            num_chan = 1
+            num_kernel = 4
+            emb_dim = 16
+            if modality == "ppg":
+                num_time = 6 * 32
+            elif modality == "eda":
+                num_time = 4 * 32
+            elif modality == "resp":
+                num_time = 10 * 32
+            else:
+                raise ValueError(f"Unknown modality: {modality}")
+
+        parser_group.add_argument("--num_chan", default=num_chan, type=int, help="Number of channels")
+        parser_group.add_argument("--num_time", default=num_time, type=int, help="Number of time steps")
+        parser_group.add_argument("--num_kernel", default=num_kernel, type=int, help="Number of kernels")
+        parser_group.add_argument("--temporal_kernel", default=13, type=int, help="Length of temporal kernels")
+        parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
+        parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
+        parser_group.add_argument("--mlp_dim", default=16, type=int, help="Dimension of MLP")
+        parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
+        parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
+        # TODO: analyse what rate is better
+        # group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
+        # group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
+        parser_group.add_argument("--emb_dim", default=emb_dim, type=int, help="Embedding dimension")
+        parser_group.add_argument("--out_dim", default=default_out_dim, type=int,
+                                  help="Size of the output. For classification tasks, this is the number of classes.")
+
     def cnn_block(self, out_chan, kernel_size, num_chan):
         return nn.Sequential(
             Conv2dWithConstraint(1, out_chan, kernel_size, padding=self.get_padding(kernel_size[-1]), max_norm=2),
-            Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1), padding=0, max_norm=2),
+            #Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1), padding=0, max_norm=2),
+            # Only do spatial convolution if there is more than one channel
+            Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1),
+                                 padding=0, max_norm=2) if num_chan > 1 else nn.Identity(),
             nn.BatchNorm2d(out_chan),
             nn.ELU(),
-            nn.MaxPool2d((1, 2), stride=(1, 2))
+            #nn.MaxPool2d((1, 2), stride=(1, 2))
         )
 
     def __init__(self, *, num_chan, num_time, temporal_kernel, num_kernel=64,
@@ -165,7 +211,8 @@ class UnimodalDeformer(nn.Module):
             out_chan=num_kernel, kernel_size=(1, temporal_kernel), num_chan=num_chan
         )
 
-        dim = int(0.5*num_time)  # embedding size after the first cnn encoder
+        #dim = int(0.5*num_time)  # embedding size after the first cnn encoder
+        dim = num_time
 
         self.to_patch_embedding = Rearrange('b k c f -> b k (c f)')
 
@@ -212,11 +259,24 @@ def count_parameters(model):
 
 
 if __name__ == "__main__":
-    data = torch.ones((16, 32, 1000))
-    emt = UnimodalDeformer(num_chan=32, num_time=1000, temporal_kernel=11, num_kernel=64,
-                           emb_dim=256, out_dim=2, depth=4, heads=16,
-                           mlp_dim=16, dim_head=16, dropout=0.5)
+    data = torch.rand(1, 16, 512)
+    emt = UnimodalDeformer(
+        num_time=512,
+        num_chan=16,
+        mlp_dim=16,
+        num_kernel=64,
+        temporal_kernel=13,
+        emb_dim=256,
+        depth=4,
+        heads=16,
+        dim_head=16,
+        dropout=0.5,
+        out_dim=2
+    )
     print(emt)
     print(count_parameters(emt))
 
     out = emt(data)
+
+    print(out)
+    print(out.shape)

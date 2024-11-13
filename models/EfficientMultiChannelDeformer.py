@@ -4,6 +4,7 @@ import copy
 from einops import rearrange
 from einops.layers.torch import Rearrange
 
+from utils.model_util import BaseBenchmarkModel
 #from utils.model_util import count_parameters
 
 # TODO
@@ -14,7 +15,7 @@ from einops.layers.torch import Rearrange
 #  - try sin/cos and compare if it still works and is as good as before
 
 class CrossChannelTransformerEncoderLayer(nn.Module):
-    def __init__(self, input_dimension, number_of_heads, dim_head, mlp_dim, dropout, out_dim=None):
+    def __init__(self, input_dimension, number_of_heads, dim_head, mlp_dims, dropout, out_dim=None):
         super(CrossChannelTransformerEncoderLayer, self).__init__()
         
         self.sa = Attention(
@@ -29,7 +30,7 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
         
         self.ffwd = FeedForward(
             dim=input_dimension,
-            hidden_dim=mlp_dim, #input_dimension * 4,
+            hidden_dim=sum(mlp_dims), #mlp_dim * 4, #input_dimension * 4,
             # maybe reduce this to *2. But first do num kernels and emb dim. Then see if the impact is large
             #hidden_dim=input_dimension * 2,
             out_dim=out_dim if out_dim is not None else input_dimension #input_dimension
@@ -39,12 +40,14 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
         
 
     def forward(self, x, other_channels_output):
+        # Stacking the other channels on the kernel dimension.
+        # This allows the use of different numbers of kernels for the modalities.
         x_agg = torch.cat(other_channels_output, dim=-2) #dim=-1)
-        print(f'hi: {x.shape}')
+        #print(f'hi: {x.shape}')
 
         x = x + self.sa(x, x_agg, x_agg)
 
-        print(x.shape)
+        #print(x.shape)
 
         #exit()
         #x = x + self.ffwd(x)
@@ -94,22 +97,25 @@ class Attention(nn.Module):
             self.to_v = nn.Linear(q_dim, inner_dim, bias=False)
 
         if out_dim is not None:
-            print("hm")
-            self.to_out = nn.Linear(inner_dim, out_dim)
+            #("hm")
+            #self.to_out = nn.Linear(inner_dim, out_dim)
+            self.to_out = nn.Sequential(
+                nn.Linear(inner_dim, out_dim),
+                nn.Dropout(dropout)
+            )
         else:
-            print("hmhm")
+            #print("hmhm")
             self.to_out = nn.Sequential(
                 nn.Linear(inner_dim, q_dim),
-                # TODO: why the dropourt here?
                 nn.Dropout(dropout)
             ) if project_out else nn.Identity()
 
     def forward(self, q, k, v):
-        print(q.shape)
-        print(k.shape)
-        print(v.shape)
+        #print(q.shape)
+        #print(k.shape)
+        #print(v.shape)
 
-        print(self.q_dim)
+        #print(self.q_dim)
         if self.create_heads:
             qkv = [
                 self.to_q(q), 
@@ -125,9 +131,9 @@ class Attention(nn.Module):
 
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h=self.heads), qkv)
 
-        print(q.shape)
-        print(k.shape)
-        print(v.shape)
+        #print(q.shape)
+        #print(k.shape)
+        #print(v.shape)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
 
@@ -149,13 +155,17 @@ class Transformer(nn.Module):
             nn.MaxPool1d(kernel_size=2, stride=2)
         )
 
-    def __init__(self, dims, depth, heads, dim_head, mlp_dim, in_chans, emb_dim,
-                 out_dim, fine_grained_kernel=11, dropout=0.):
+    def __init__(self, dims, depth, heads, dim_head, mlp_dims, in_chans, emb_dims,
+                 out_dim, fine_grained_kernels, dropout=0.):
         super().__init__()
 
         self.modality_compression_layers = nn.ModuleList([])
         modality_output_sizes = self.get_modality_output_sizes(dims, depth, in_chans)
-        for output_size in modality_output_sizes:
+
+        #print(modality_output_sizes)
+        #exit()
+
+        for output_size, emb_dim in zip(modality_output_sizes, emb_dims):
             ffwd = FeedForward(
                 dim=output_size,
                 hidden_dim=emb_dim,
@@ -164,15 +174,12 @@ class Transformer(nn.Module):
             self.modality_compression_layers.append(ffwd)
 
         self.output_ffwd = FeedForward(
-            dim=emb_dim * len(dims),
-            hidden_dim=emb_dim,
+            dim=sum(emb_dims), #emb_dim * len(dims),
+            hidden_dim=sum(emb_dims), #emb_dim,
             out_dim=out_dim
         )
 
         inner_dim = dim_head * heads
-
-        # TODO: add initial projectors, one for each modality (also see what 
-        #   exactly the cnn encoder does to avoid unneneccessary back and forth)
 
         self.layers = nn.ModuleList([])
         for i in range(depth):
@@ -187,11 +194,9 @@ class Transformer(nn.Module):
                 #dims_copy.pop(k)
 
                 dim = dims[k]
+                mlp_dim = mlp_dims[k]
+                fine_grained_kernel = fine_grained_kernels[k]
                 in_chan = in_chans[k]
-
-                # the in channels (i.e. the number of kernels) must be the same across
-                # all layers of one depth so that the cross attention works!
-                # TODO: allow support for non matching by adding linear layers in case of miss match
 
                 depth_layers.append(nn.ModuleList([
                     #nn.Linear(dim, inner_dim, bias=False),
@@ -200,7 +205,7 @@ class Transformer(nn.Module):
                     self.cnn_block(in_chan=in_chan, kernel_size=fine_grained_kernel, dp=dropout),
                     nn.Linear(dim, inner_dim, bias=False),
                     CrossChannelTransformerEncoderLayer(input_dimension=inner_dim, number_of_heads=heads, 
-                                                        dim_head=dim_head, mlp_dim=mlp_dim, dropout=dropout, out_dim=dim)
+                                                        dim_head=dim_head, mlp_dims=mlp_dims, dropout=dropout, out_dim=dim)
                 ]))
 
             self.layers.append(depth_layers)
@@ -219,21 +224,17 @@ class Transformer(nn.Module):
             for i, (attn, ff, cnn, head_creator, _) in enumerate(depth_layers):
                 # Modality specific tensor
                 x = channels_output[i]
-
                 
                 
-                print(x.shape)
+                #print(x.shape)
                 x_cg = self.pool(x)
-                print(x_cg.shape)
+                #print(x_cg.shape)
                 #x_cg_heads = self_att_head_creator(x_cg)
 
-
-                # TODO: here already take projected one and then also project back into time space like previouly
                 x_cg = attn(x_cg, x_cg, x_cg) + x_cg
 
-                
-
                 x_fg = cnn(x)
+
                 x_info = self.get_info(x_fg)  # (b, in_chan)
                 depth_dense_feature.append(x_info)
                 # TODO think about if this ff can be directly used to get the heads
@@ -245,7 +246,7 @@ class Transformer(nn.Module):
                 
                 channels_output[i] = x
 
-                print(f"x after self loop {x.shape}")
+                #print(f"x after self loop {x.shape}")
                 #exit()
 
                 
@@ -253,7 +254,6 @@ class Transformer(nn.Module):
 
             dense_feature.append(depth_dense_feature)
 
-            # TODO: also fix this new channels output bug in other models!!!
             new_channels_output = []
             # Cross attentions blocks, one for each modality
             for i, (_, _, _, _, cross_attn) in enumerate(depth_layers):
@@ -266,9 +266,9 @@ class Transformer(nn.Module):
                 )
 
 
-                print(x.shape)
+                #print(x.shape)
 
-                print("hiii")
+                #print("hiii")
                 #exit()
 
                 new_channels_output.append(x)
@@ -276,6 +276,8 @@ class Transformer(nn.Module):
                 #channels_output[i] = x
 
             channels_output = new_channels_output
+
+        #exit()
 
         modality_specific_emb = []
         for i, chan_out in enumerate(channels_output):
@@ -319,27 +321,55 @@ class Conv2dWithConstraint(nn.Conv2d):
         return super(Conv2dWithConstraint, self).forward(x)
 
 
-class MultiChannelDeformer(nn.Module):
+class EfficientMultiChannelDeformer(nn.Module, BaseBenchmarkModel):
+    @staticmethod
+    def add_model_options(parser_group, default_out_dim, modality=None):
+        #group = parser.add_argument_group('model')
+
+        # These can vary between modalities
+        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 32, 4 * 32, 10 * 32], type=int, nargs="+",
+                           help="Number of time steps for the resp modality")
+        parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
+                           help="Number of channels for the modalities")
+        parser_group.add_argument("--mlp_dim", default=[16, 16, 16, 16], type=int, nargs="+",
+                           help="Dimensions of MLPs for the modalities")
+        parser_group.add_argument("--num_kernel", default=[64, 4, 4, 4], type=int, nargs="+",
+                           help="Numbers of kernels for the modalities")
+        parser_group.add_argument("--temporal_kernel", default=[13, 13, 13, 13], type=int, nargs="+",
+                           help="Lengths of temporal kernels for the modalities")
+        parser_group.add_argument("--emb_dim", default=[256, 16, 16, 16], type=int, nargs="+",
+                           help="Embedding dimensions for the modalities")
+
+        # These must match for all modalities
+        parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
+        parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
+        parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
+        parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
+        # TODO: analyse what rate is better
+        # group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
+        parser_group.add_argument("--out_dim", default=default_out_dim, type=int,
+                           help="Size of the output. For classification tasks, this is the number of classes.")
+
     def cnn_block(self, out_chan, kernel_size, num_chan):
         return nn.Sequential(
             Conv2dWithConstraint(1, out_chan, kernel_size, padding=self.get_padding(kernel_size[-1]), max_norm=2),
-            Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1), padding=0, max_norm=2),
+            # Only do spatial convolution if there is more than one channel
+            Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1),
+                                 padding=0, max_norm=2) if num_chan > 1 else nn.Identity(),
             nn.BatchNorm2d(out_chan),
             nn.ELU(),
-            # TODO: also remove this in other models! generally make them consistent 
-            # TODO: remove this pooling. I think this causes double pooling right after eachother because
-            # teh transfomrer also does pooling in the beginning
+            # the transformer also does pooling in the beginning
             #nn.MaxPool2d((1, 2), stride=(1, 2))
         )
 
-    def __init__(self, *, dims, num_channels, temporal_kernel, num_kernels,
-                 emb_dim, out_dim, depth=4, heads=16,
-                 mlp_dim=16, dim_head=16, dropout=0.):
+    def __init__(self, *, num_time, num_chan, mlp_dim, num_kernel, temporal_kernel,
+                 emb_dim, depth, heads, dim_head, dropout, out_dim):
         super().__init__()
 
         self.cnn_encoders = nn.ModuleList([])
-        for chan, num_kern in zip(num_channels, num_kernels):
-            cnn_encoder = self.cnn_block(out_chan=num_kern, kernel_size=(1, temporal_kernel), num_chan=chan)
+        print(num_chan, num_kernel, temporal_kernel)
+        for chan, num_kern, temporal_kern in zip(num_chan, num_kernel, temporal_kernel):
+            cnn_encoder = self.cnn_block(out_chan=num_kern, kernel_size=(1, temporal_kern), num_chan=chan)
             self.cnn_encoders.append(cnn_encoder)
 
         #dims = [int(0.5 * d) for d in dims]  # embedding size after the first cnn encoders
@@ -347,14 +377,14 @@ class MultiChannelDeformer(nn.Module):
         self.to_patch_embedding = Rearrange('b k c f -> b k (c f)')
 
         self.pos_embeddings = nn.ParameterList([])
-        for dim, num_kern in zip(dims, num_kernels):
+        for dim, num_kern in zip(num_time, num_kernel):
             pos_embedding = nn.Parameter(torch.randn(1, num_kern, dim))
             self.pos_embeddings.append(pos_embedding)
 
         self.transformer = Transformer(
-            dims=dims, depth=depth, heads=heads, dim_head=dim_head,
-            mlp_dim=mlp_dim, emb_dim=emb_dim, out_dim=out_dim, dropout=dropout,
-            in_chans=num_kernels, fine_grained_kernel=temporal_kernel
+            dims=num_time, depth=depth, heads=heads, dim_head=dim_head,
+            mlp_dims=mlp_dim, emb_dims=emb_dim, out_dim=out_dim, dropout=dropout,
+            in_chans=num_kernel, fine_grained_kernels=temporal_kernel
         )
 
         
@@ -383,18 +413,18 @@ def count_parameters(model):
 
 
 if __name__ == "__main__":
-    dummy_model = MultiChannelDeformer(
-        dims=[4 * 128, 6 * 32, 4 * 32, 10 * 32],
-        num_channels=[16, 1, 1, 1],
+    dummy_model = EfficientMultiChannelDeformer(
+        num_time=[4 * 128, 6 * 32, 4 * 32, 10 * 32],
+        num_chan=[16, 1, 1, 1],
+        mlp_dim=[16, 16, 16, 16],
+        num_kernel=[64, 4, 4, 4],
+        temporal_kernel=[13, 13, 13, 13],
+        emb_dim=[256, 16, 16, 16],
         depth=4,
         heads=16,
         dim_head=16,
-        mlp_dim=16,
-        num_kernels=[64, 4, 4, 4],
-        emb_dim=256,
-        out_dim=2,
-        temporal_kernel=13,
-        dropout=0.
+        dropout=0.,
+        out_dim=2
     )
 
     dummy_eeg = torch.randn(1, 16, 4 * 128)
@@ -415,9 +445,10 @@ if __name__ == "__main__":
     print(output)
     print(output.shape)
 
-    tensor1 = torch.randn(1, 16, 4, 16)
-    tensor2 = torch.randn(1, 16, 16, 64)
-    result = torch.matmul(tensor1, tensor2).size()
+    #tensor1 = torch.randn(1, 16, 4, 16)
+    #tensor2 = torch.randn(1, 16, 16, 64)
+    #result = torch.matmul(tensor1, tensor2).size()
 
-    print("hi")
-    print(result)
+    #print("hi")
+    #print(result)
+    #print(count_parameters(dummy_model))

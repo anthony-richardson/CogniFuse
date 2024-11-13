@@ -6,9 +6,10 @@ import inspect
 import datetime
 
 import utils.tasks as tasks
+from utils.model_util import get_model_cls
 
 
-def parse_and_load_from_model(parser, is_unimodal, model_path):
+def parse_and_load_from_model(parser, model_path):
     if model_path is None:
         model_path = get_model_path_from_args()
 
@@ -20,11 +21,20 @@ def parse_and_load_from_model(parser, is_unimodal, model_path):
         model_args = json.load(fr)
 
     add_seed(parser)
-    group_names = ['seed']
+    group_names = ['seed', 'model']
 
-    default_out_dim = model_args['out_dim']
+    parser_group = parser.add_argument_group('model')
 
-    if is_unimodal:
+    out_dim = model_args['out_dim']
+    model_name = model_args['model_name']
+    get_model_cls(model_name).add_model_options(
+        parser_group=parser_group,
+        default_out_dim=out_dim,
+        # TODO: see if model_args['multimodal'] is a string or int after load from json and if it needs casting
+        modality=None if model_args['multimodal'] else model_args['modality']
+    )
+
+    '''if is_unimodal:
         try:
             modality = model_args['modality']
         except KeyError:
@@ -32,8 +42,11 @@ def parse_and_load_from_model(parser, is_unimodal, model_path):
         add_unimodal_deformer_model_options(parser, modality, default_out_dim)
         group_names.append('unimodal_deformer_model')
     else:
-        add_multimodal_deformer_model_options(parser, default_out_dim)
-        group_names.append('multimodal_deformer_model')
+        #fusion_type = model_args['fusion_type']
+        model_name = model_args['model_name']
+        #add_multimodal_deformer_model_options(parser, default_out_dim, fusion_type)
+        add_multimodal_deformer_model_options(parser, default_out_dim, model_name)
+        group_names.append('multimodal_deformer_model')'''
 
     args, _ = parser.parse_known_args()
 
@@ -89,6 +102,14 @@ def add_base_options(parser):
     group.add_argument("--cuda", choices=[0, 1], default=0, type=int, help="Use cuda device, otherwise use CPU.")
     group.add_argument("--device", default=0, type=int, help="Device id to use.")
 
+    # TODO: later ignore the base model class once its created
+    model_dir = os.path.join(os.getcwd(), 'models')
+    model_name_options = [name.split('.')[0] for name in os.listdir(model_dir)
+                          if os.path.isfile(os.path.join(model_dir, name))
+                          and name.endswith('.py')]
+    group.add_argument("--model_name", type=str, help="The file name containing the equally named model class.",
+                       choices=model_name_options, required=True)
+
 
 def add_data_options(parser, cross_validate=False):
     group = parser.add_argument_group('dataset')
@@ -111,50 +132,69 @@ def add_data_options(parser, cross_validate=False):
                            choices=fold_options, required=True)
 
 
-def add_multimodal_deformer_model_options(parser, default_out_dim):
+
+'''def add_multimodal_deformer_model_options(parser, default_out_dim, model_name):
     group = parser.add_argument_group('multimodal_deformer_model')
 
-    group.add_argument("--num_time_eeg", default=4 * 128, type=int,
-                       help="Number of time steps for the eeg modality")
-    group.add_argument("--num_time_ppg", default=6 * 32, type=int,
-                       help="Number of time steps for the ppg modality")
-    group.add_argument("--num_time_eda", default=4 * 32, type=int,
-                       help="Number of time steps for the eda modality")
-    group.add_argument("--num_time_resp", default=10 * 32, type=int,
+    # TODO: the model classes should instead all have a static (! no initialization needed) method that
+    #  returns their own model parser (parameters needed to initialize the model)
+
+    # Number of time steps and channels can vary per modality in all models.
+    group.add_argument("--num_time", default=[4 * 128, 6 * 32, 4 * 32, 10 * 32], type=int, nargs="+",
                        help="Number of time steps for the resp modality")
+    group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
+                       help="Number of channels for the modalities")
 
-    group.add_argument("--num_chan_eeg", default=16, type=int,
-                       help="Number of channels for the eeg modality")
-    group.add_argument("--num_chan_ppg", default=1, type=int,
-                       help="Number of channels for the eeg modality")
-    group.add_argument("--num_chan_eda", default=1, type=int,
-                       help="Number of channels for the eeg modality")
-    group.add_argument("--num_chan_resp", default=1, type=int,
-                       help="Number of channels for the eeg modality")
+    # The level of flexibility differs between the architectures.
+    if model_name == 'EfficientMultiChannelDeformer':
+        # Most flexibility
+        group.add_argument("--mlp_dim", default=[16, 16, 16, 16], type=int, nargs="+",
+                           help="Dimensions of MLPs for the modalities")
+        group.add_argument("--num_kernel", default=[64, 4, 4, 4], type=int, nargs="+",
+                           help="Numbers of kernels for the modalities")
+        group.add_argument("--temporal_kernel", default=[13, 13, 13, 13], type=int, nargs="+",
+                           help="Lengths of temporal kernels for the modalities")
+        group.add_argument("--emb_dim", default=[256, 16, 16, 16], type=int, nargs="+",
+                           help="Embedding dimensions for the modalities")
+    elif model_name == 'MultiChannelDeformer' or model_name == 'EarlyFusionDeformer':
+        group.add_argument("--mlp_dim", default=16, type=int, help="Dimension of MLP")
+        group.add_argument("--num_kernel", default=64, type=int, help="Number of kernels")
+        group.add_argument("--temporal_kernel", default=13, type=int, help="Length of temporal kernels")
+        group.add_argument("--emb_dim", default=256, type=int, help="Embedding dimension")
+    elif model_name == 'IntermediateFusionDeformer':
+        group.add_argument("--mlp_dim", default=[16, 16, 16, 16], type=int, nargs="+",
+                           help="Dimensions of MLPs for the modalities")
+        group.add_argument("--num_kernel", default=[64, 4, 4, 4], type=int, nargs="+",
+                           help="Numbers of kernels for the modalities")
+        group.add_argument("--temporal_kernel", default=[13, 13, 13, 13], type=int, nargs="+",
+                           help="Lengths of temporal kernels for the modalities")
+        group.add_argument("--emb_dim", default=256, type=int, help="Embedding dimension")
+    else:
+        raise ValueError(f'Unknown model name: {model_name}')
 
+    # These must match for all modalities
     group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
     group.add_argument("--heads", default=16, type=int, help="Number of heads")
     group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
-    group.add_argument("--mlp_dim", default=16, type=int, help="Dimension of MLP")
-    group.add_argument("--num_kernel", default=64, type=int, help="Number of kernels")
-    group.add_argument("--temporal_kernel", default=13, type=int, help="Length of temporal kernels")
     group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
     # TODO: analyse what rate is better
     #group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
-    group.add_argument("--emb_dim", default=256, type=int, help="Embedding dimension")
     group.add_argument("--out_dim", default=default_out_dim, type=int,
                        help="Size of the output. For classification tasks, this is the number of classes.")
+'''
 
-
+'''
 def add_unimodal_deformer_model_options(parser, modality, default_out_dim):
     if modality == "eeg":
         num_chan = 16
         num_kernel = 64
         num_time = 4 * 128
+        emb_dim = 256
     else:
         num_chan = 1
         # TODO: later reduce to for example 16 for other modalities (something based on a rule)
-        num_kernel = 64
+        num_kernel = 4
+        emb_dim = 16
         if modality == "ppg":
             num_time = 6 * 32
         elif modality == "eda":
@@ -178,9 +218,10 @@ def add_unimodal_deformer_model_options(parser, modality, default_out_dim):
     #group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
     #group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
     # TODO: later reduce for other modalities than eeg
-    group.add_argument("--emb_dim", default=256, type=int, help="Embedding dimension")
+    group.add_argument("--emb_dim", default=emb_dim, type=int, help="Embedding dimension")
     group.add_argument("--out_dim", default=default_out_dim, type=int,
                        help="Size of the output. For classification tasks, this is the number of classes.")
+'''
 
 
 def add_training_options(parser):
@@ -216,10 +257,10 @@ def add_multimodal_option(parser):
                        help="Whether the model is multimodal or not.")
 
 
-def add_fusion_type_option(parser):
+'''def add_fusion_type_option(parser):
     group = parser.add_argument_group('fusion_type')
-    group.add_argument("--fusion_type", choices=['crossmodal', 'early', 'intermediate'],
-                       default='crossmodal', type=str, help="Different fusion types.")
+    group.add_argument("--fusion_type", choices=['efficient_crossmodal', 'crossmodal', 'early', 'intermediate'],
+                       default='efficient_crossmodal', type=str, help="Different fusion types.")'''
 
 
 def add_modality_option(parser):
@@ -248,7 +289,7 @@ def add_task_option(parser):
                        required=True, type=str, help="Different tasks.")
 
 
-def multimodal_deformer_train_args(cross_validate=False):
+def train_args(cross_validate=False):
     parser = ArgumentParser()
     add_base_options(parser)
     add_multimodal_option(parser)
@@ -256,24 +297,45 @@ def multimodal_deformer_train_args(cross_validate=False):
     add_data_options(parser, cross_validate)
     add_task_option(parser)
     add_training_options(parser)
-    add_fusion_type_option(parser)
-
-    default_out_dim = get_output_size_from_task()
-    add_multimodal_deformer_model_options(parser, default_out_dim)
 
     dummy_parser = ArgumentParser()
-    add_fusion_type_option(dummy_parser)
+    add_base_options(dummy_parser)
+
+    if not is_multimodal():
+        add_modality_option(parser)
+        add_modality_option(dummy_parser)
+
     dummy_args, _ = dummy_parser.parse_known_args()
-    fusion_type = dummy_args.fusion_type
+    model_name = dummy_args.model_name
+
+    default_out_dim = get_output_size_from_task()
+    #add_multimodal_deformer_model_options(parser, default_out_dim, fusion_type)
+
+    parser_group = parser.add_argument_group('model')
+
+    #add_multimodal_deformer_model_options(parser, default_out_dim, model_name)
+    get_model_cls(model_name).add_model_options(
+        parser_group=parser_group,
+        default_out_dim=default_out_dim,
+        modality=None if is_multimodal() else dummy_args.modality
+    )
 
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
-    default_save_dir = os.path.join(os.getcwd(), 'save', 'multimodal',
-                                    f'{fusion_type}_fusion_deformer', timestamp)
+    #default_save_dir = os.path.join(os.getcwd(), 'save', 'multimodal',
+    #                                f'{fusion_type}_fusion_deformer', timestamp)
+
+    if is_multimodal():
+        default_save_dir = os.path.join(os.getcwd(), 'save', 'multimodal',
+                                        model_name, timestamp)
+    else:
+        modality = dummy_args.modality
+        default_save_dir = os.path.join(os.getcwd(), 'save', 'unimodal',
+                                        model_name, modality, timestamp)
     add_save_dir_path(parser, default_save_dir=default_save_dir)
     return parser.parse_args()
 
 
-def unimodal_deformer_train_args(cross_validate=False):
+'''def unimodal_deformer_train_args(cross_validate=False):
     parser = ArgumentParser()
     add_base_options(parser)
     add_multimodal_option(parser)
@@ -288,13 +350,19 @@ def unimodal_deformer_train_args(cross_validate=False):
     dummy_args, _ = dummy_parser.parse_known_args()
     modality = dummy_args.modality
 
+    dummy_parser = ArgumentParser()
+    add_base_options(dummy_parser)
+    dummy_args, _ = dummy_parser.parse_known_args()
+    model_name = dummy_args.model_name
+
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
-    default_save_dir = os.path.join(os.getcwd(), 'save', 'unimodal', modality, timestamp)
+    default_save_dir = os.path.join(os.getcwd(), 'save', 'unimodal',
+                                    model_name, modality, timestamp)
     add_save_dir_path(parser, default_save_dir=default_save_dir)
 
     default_out_dim = get_output_size_from_task()
     add_unimodal_deformer_model_options(parser, modality, default_out_dim)
-    return parser.parse_args()
+    return parser.parse_args()'''
 
 
 def late_fusion_evaluation_args():
@@ -309,7 +377,7 @@ def late_fusion_evaluation_args():
 
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
     default_save_dir = os.path.join(os.getcwd(), 'save', 'multimodal',
-                                    'late_fusion_deformer', timestamp)
+                                    'LateFusionDeformer', timestamp)
     add_save_dir_path(parser, default_save_dir=default_save_dir)
     return parser.parse_args()
 
@@ -322,8 +390,26 @@ def is_multimodal():
     return multimodal
 
 
-def model_parser(is_unimodal, model_path=None):
+def model_parser(model_path=None):
     parser = ArgumentParser()
     # args specified by the user: (all other will be loaded from the model)
     add_base_options(parser)
-    return parse_and_load_from_model(parser, is_unimodal, model_path)
+    return parse_and_load_from_model(parser, model_path)
+
+
+def get_pass_through_args(args):
+    parser_args = [arg for arg in dir(args) if not arg.startswith('_')]
+    pass_trough_args = []
+    for arg in parser_args:
+        pass_trough_args.append('--' + arg)
+        val = getattr(args, arg)
+
+        if isinstance(val, list):
+            for v in val:
+                v = str(v)
+                pass_trough_args.append(v)
+        else:
+            val = str(val)
+            pass_trough_args.append(val)
+
+    return pass_trough_args

@@ -4,19 +4,20 @@ import subprocess
 from collections import OrderedDict
 
 from utils.fixseed import fixseed
-from utils.parser_util import multimodal_deformer_train_args, unimodal_deformer_train_args, is_multimodal
-from utils.eval_util import cross_validate, get_pass_through_args, save_args
-from utils.model_util import create_multimodal_deformer, create_unimodal_deformer
+from utils.parser_util import train_args, is_multimodal, get_pass_through_args
+from utils.eval_util import cross_validate, save_args
+from utils.model_util import create_model
 
 
 def main():
-    multimodal = is_multimodal()
-    if multimodal:
-        args = multimodal_deformer_train_args(cross_validate=True)
-        save_args(args, create_multimodal_deformer)
-    else:
-        args = unimodal_deformer_train_args(cross_validate=True)
-        save_args(args, create_unimodal_deformer)
+    #multimodal = is_multimodal()
+    #if multimodal:
+    args = train_args(cross_validate=True)
+    save_args(args, create_model)
+    #else:
+        #args = unimodal_deformer_train_args(cross_validate=True)
+    #    args = train_args(cross_validate=True)
+    #    save_args(args, create_model)
 
     fixseed(args.seed)
 

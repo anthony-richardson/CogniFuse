@@ -7,6 +7,7 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 
 #from utils.model_util import count_parameters
+from utils.model_util import BaseBenchmarkModel
 
 # TODO
 #  - think about and maybe replace random positional encoding by sin/cos encoding
@@ -15,8 +16,9 @@ from einops.layers.torch import Rearrange
 #  speed when forcing deterministic behaviour dor reproducibility
 #  - try sin/cos and compare if it still works and is as good as before
 
+
 class CrossChannelTransformerEncoderLayer(nn.Module):
-    def __init__(self, input_dimension, channels_time_dims, number_of_heads, dim_head, dropout):
+    def __init__(self, input_dimension, channels_time_dims, number_of_heads, dim_head, mlp_dim, dropout):
         super(CrossChannelTransformerEncoderLayer, self).__init__()
         # same as regular TransformerEncoderLayer, but the values and keys depend on the output of the other channels
         self.sa = Attention(
@@ -34,10 +36,10 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
         )"""
         self.ffwd = FeedForward(
             dim=input_dimension,
-            hidden_dim=input_dimension * 4,
+            hidden_dim=mlp_dim + (mlp_dim * len(channels_time_dims)), #input_dimension * 4,
             out_dim=input_dimension
         )
-        
+
         #self.agg = nn.ParameterList(
         #    [
         #        nn.Parameter(torch.ones(d), requires_grad=True)
@@ -209,7 +211,8 @@ class Transformer(nn.Module):
                     FeedForward(dim, mlp_dim, dim, dropout=dropout),
                     self.cnn_block(in_chan=in_chan, kernel_size=fine_grained_kernel, dp=dropout),
                     CrossChannelTransformerEncoderLayer(input_dimension=dim, channels_time_dims=dims_copy, 
-                                                        number_of_heads=heads, dim_head=dim_head, dropout=dropout)
+                                                        number_of_heads=heads, dim_head=dim_head,
+                                                        mlp_dim=mlp_dim, dropout=dropout)
                 ]))
 
             self.layers.append(depth_layers)
@@ -237,6 +240,7 @@ class Transformer(nn.Module):
 
             dense_feature.append(depth_dense_feature)
 
+            new_channels_output = []
             # Cross attentions blocks, one for each modality
             for i, (attn, ff, cnn, cross_attn) in enumerate(depth_layers):
                 # Modality specific tensor
@@ -250,7 +254,11 @@ class Transformer(nn.Module):
                     x, [h for n, h in enumerate(channels_output) if n != i]
                 )
 
-                channels_output[i] = x
+                new_channels_output.append(x)
+
+                #channels_output[i] = x
+
+            channels_output = new_channels_output
 
         #print('-----')
         modality_specific_emb = []
@@ -313,40 +321,66 @@ class Conv2dWithConstraint(nn.Conv2d):
         return super(Conv2dWithConstraint, self).forward(x)
 
 
-class MultiChannelDeformer(nn.Module):
+class MultiChannelDeformer(nn.Module, BaseBenchmarkModel):
+    @staticmethod
+    def add_model_options(parser_group, default_out_dim, modality=None):
+        #group = parser.add_argument_group('model')
+
+        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 32, 4 * 32, 10 * 32], type=int, nargs="+",
+                           help="Number of time steps for the resp modality")
+        parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
+                           help="Number of channels for the modalities")
+
+        parser_group.add_argument("--mlp_dim", default=16, type=int, help="Dimension of MLP")
+        parser_group.add_argument("--num_kernel", default=64, type=int, help="Number of kernels")
+        parser_group.add_argument("--temporal_kernel", default=13, type=int, help="Length of temporal kernels")
+        parser_group.add_argument("--emb_dim", default=256, type=int, help="Embedding dimension")
+
+        parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
+        parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
+        parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
+        parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
+        # TODO: analyse what rate is better
+        # group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
+        parser_group.add_argument("--out_dim", default=default_out_dim, type=int,
+                           help="Size of the output. For classification tasks, this is the number of classes.")
+
     def cnn_block(self, out_chan, kernel_size, num_chan):
         return nn.Sequential(
             Conv2dWithConstraint(1, out_chan, kernel_size, padding=self.get_padding(kernel_size[-1]), max_norm=2),
-            Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1), padding=0, max_norm=2),
+            #Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1), padding=0, max_norm=2),
+            # Only do spatial convolution if there is more than one channel
+            Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1),
+                                 padding=0, max_norm=2) if num_chan > 1 else nn.Identity(),
             nn.BatchNorm2d(out_chan),
             nn.ELU(),
-            nn.MaxPool2d((1, 2), stride=(1, 2))
+            #nn.MaxPool2d((1, 2), stride=(1, 2))
         )
 
-    def __init__(self, *, dims, num_channels, temporal_kernel, num_kernel=64,
+    def __init__(self, *, num_time, num_chan, temporal_kernel, num_kernel=64,
                  emb_dim, out_dim, depth=4, heads=16,
                  mlp_dim=16, dim_head=16, dropout=0.):
         super().__init__()
 
         self.cnn_encoders = nn.ModuleList([])
-        for chan in num_channels:
+        for chan in num_chan:
             cnn_encoder = self.cnn_block(out_chan=num_kernel, kernel_size=(1, temporal_kernel), num_chan=chan)
             self.cnn_encoders.append(cnn_encoder)
 
 
         #self.cnn_encoder = self.cnn_block(out_chan=num_kernel, kernel_size=(1, temporal_kernel), num_chan=num_chan)
 
-        dims = [int(0.5 * d) for d in dims]  # embedding size after the first cnn encoders
+        #dims = [int(0.5 * d) for d in dims]  # embedding size after the first cnn encoders
 
         self.to_patch_embedding = Rearrange('b k c f -> b k (c f)')
 
         self.pos_embeddings = nn.ParameterList([])
-        for dim in dims:
+        for dim in num_time:
             pos_embedding = nn.Parameter(torch.randn(1, num_kernel, dim))
             self.pos_embeddings.append(pos_embedding)
 
         self.transformer = Transformer(
-            dims=dims, depth=depth, heads=heads, dim_head=dim_head,
+            dims=num_time, depth=depth, heads=heads, dim_head=dim_head,
             mlp_dim=mlp_dim, emb_dim=emb_dim, out_dim=out_dim, dropout=dropout,
             in_chan=num_kernel, fine_grained_kernel=temporal_kernel
         )
@@ -395,17 +429,17 @@ def count_parameters(model):
 
 if __name__ == "__main__":
     dummy_model = MultiChannelDeformer(
-        dims=[4 * 128, 6 * 32, 4 * 32, 10 * 32],
-        num_channels=[16, 1, 1, 1],
+        num_time=[4 * 128, 6 * 32, 4 * 32, 10 * 32],
+        num_chan=[16, 1, 1, 1],
+        mlp_dim=16,
+        num_kernel=64,
+        temporal_kernel=13,
+        emb_dim=256,
         depth=4,
         heads=16,
         dim_head=16,
-        mlp_dim=16,
-        num_kernel=64,
-        emb_dim=256,
-        out_dim=2,
-        temporal_kernel=13,
-        dropout=0.
+        dropout=0.,
+        out_dim=2
     )
 
     dummy_eeg = torch.randn(1, 16, 4 * 128)

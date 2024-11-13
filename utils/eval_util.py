@@ -86,16 +86,6 @@ def cross_validate(folds, save_dir: str):
     return best_fold_checkpoints
 
 
-def get_pass_through_args(args):
-    parser_args = [arg for arg in dir(args) if not arg.startswith('_')]
-    pass_trough_args = []
-    for arg in parser_args:
-        pass_trough_args.append('--' + arg)
-        val = str(getattr(args, arg))
-        pass_trough_args.append(val)
-    return pass_trough_args
-
-
 def save_dict(dictionary, save_dir, name):
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)

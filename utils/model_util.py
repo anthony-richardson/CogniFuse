@@ -1,7 +1,16 @@
-from models.UnimodalDeformer import UnimodalDeformer
-from models.MultiChannelDeformer import MultiChannelDeformer
-from models.EarlyFusionDeformer import EarlyFusionDeformer
-from models.IntermediateFusionDeformer import IntermediateFusionDeformer
+import importlib
+from argparse import ArgumentParser
+import argparse
+from abc import ABC, abstractmethod
+
+
+class BaseBenchmarkModel(ABC):
+    # Returns a dictionary that maps
+    # from task name to class number.
+    @staticmethod
+    @abstractmethod
+    def add_model_options(parser_group, default_out_dim, modality=None):
+        pass
 
 
 def load_model(model, state_dict):
@@ -9,57 +18,44 @@ def load_model(model, state_dict):
     assert len(unexpected_keys) == 0
 
 
-def create_unimodal_deformer(args):
-    deformer_model = UnimodalDeformer(
-        num_chan=args.num_chan,
-        num_time=args.num_time,
-        temporal_kernel=args.temporal_kernel,
-        num_kernel=args.num_kernel,
-        emb_dim=args.emb_dim,
-        out_dim=args.out_dim,
-        depth=args.depth,
-        heads=args.heads,
-        mlp_dim=args.mlp_dim,
-        dim_head=args.dim_head,
-        dropout=args.dropout
-    )
-    return deformer_model
+def create_model(args):
+    model_cls = get_model_cls(args.model_name)
+    model_arguments = get_model_arguments(args, model_cls)
+    model = model_cls(**model_arguments)
+    return model
 
 
-def create_multimodal_deformer(args):
-    if args.fusion_type == 'crossmodal':
-        model_cls = MultiChannelDeformer
-    elif args.fusion_type == 'early':
-        model_cls = EarlyFusionDeformer
-    elif args.fusion_type == 'intermediate':
-        model_cls = IntermediateFusionDeformer
-    else:
-        raise ValueError(f'Unknown fusion type: {args.fusion_type}')
+def get_model_cls(model_name):
+    try:
+        mod = importlib.import_module('models.' + model_name)
+    except ModuleNotFoundError:
+        raise ValueError(f'There is no equally named model class in models.{model_name}')
 
-    deformer_model = model_cls(
-        dims=[
-            args.num_time_eeg,
-            args.num_time_ppg,
-            args.num_time_eda,
-            args.num_time_resp
-        ],
-        num_channels=[
-            args.num_chan_eeg,
-            args.num_chan_ppg,
-            args.num_chan_eda,
-            args.num_chan_resp
-        ],
-        depth=args.depth,
-        heads=args.heads,
-        dim_head=args.dim_head,
-        mlp_dim=args.mlp_dim,
-        num_kernel=args.num_kernel,
-        emb_dim=args.emb_dim,
-        out_dim=args.out_dim,
-        temporal_kernel=args.temporal_kernel,
-        dropout=args.dropout
-    )
-    return deformer_model
+    model_cls = getattr(mod, model_name)
+    return model_cls
+
+
+def get_model_arguments(args, model_cls):
+    default_out_dim = args.out_dim,
+    modality = None if args.multimodal else args.modality
+
+    # We intentionally do not parser this parser so that the user is not required
+    # to pass them in the command line in cases where that is not needed.
+    dummy_parser = ArgumentParser()
+    dummy_parser_group = dummy_parser.add_argument_group('model')
+    model_cls.add_model_options(dummy_parser_group, default_out_dim, modality)
+
+    for group in dummy_parser._action_groups:
+        if group.title == 'model':
+            group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+            arg_names = list(argparse.Namespace(**group_dict).__dict__.keys())
+
+            model_arguments = {}
+            for arg_name in arg_names:
+                model_arguments[arg_name] = getattr(args, arg_name)
+
+            return model_arguments
+    return ValueError('Model group not found.')
 
 
 def count_parameters(model):

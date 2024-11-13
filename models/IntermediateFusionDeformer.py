@@ -6,6 +6,7 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 
 #from utils.model_util import count_parameters
+from utils.model_util import BaseBenchmarkModel
 
 # TODO
 #  - think about and maybe replace random positional encoding by sin/cos encoding
@@ -146,14 +147,43 @@ class Conv2dWithConstraint(nn.Conv2d):
         return super(Conv2dWithConstraint, self).forward(x)
 
 
-class IntermediateFusionDeformer(nn.Module):
+class IntermediateFusionDeformer(nn.Module, BaseBenchmarkModel):
+    @staticmethod
+    def add_model_options(parser_group, default_out_dim, modality=None):
+        #group = parser.add_argument_group('model')
+
+        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 32, 4 * 32, 10 * 32], type=int, nargs="+",
+                           help="Number of time steps for the resp modality")
+        parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
+                           help="Number of channels for the modalities")
+
+        parser_group.add_argument("--mlp_dim", default=[16, 16, 16, 16], type=int, nargs="+",
+                           help="Dimensions of MLPs for the modalities")
+        parser_group.add_argument("--num_kernel", default=[64, 4, 4, 4], type=int, nargs="+",
+                           help="Numbers of kernels for the modalities")
+        parser_group.add_argument("--temporal_kernel", default=[13, 13, 13, 13], type=int, nargs="+",
+                           help="Lengths of temporal kernels for the modalities")
+        parser_group.add_argument("--emb_dim", default=256, type=int, help="Embedding dimension")
+
+        parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
+        parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
+        parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
+        parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
+        # TODO: analyse what rate is better
+        # group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
+        parser_group.add_argument("--out_dim", default=default_out_dim, type=int,
+                           help="Size of the output. For classification tasks, this is the number of classes.")
+
     def cnn_block(self, out_chan, kernel_size, num_chan):
         return nn.Sequential(
             Conv2dWithConstraint(1, out_chan, kernel_size, padding=self.get_padding(kernel_size[-1]), max_norm=2),
-            Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1), padding=0, max_norm=2),
+            #Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1), padding=0, max_norm=2),
+            # Only do spatial convolution if there is more than one channel
+            Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1),
+                                 padding=0, max_norm=2) if num_chan > 1 else nn.Identity(),
             nn.BatchNorm2d(out_chan),
             nn.ELU(),
-            nn.MaxPool2d((1, 2), stride=(1, 2))  # maybe remove
+            #nn.MaxPool2d((1, 2), stride=(1, 2))  # maybe remove
         )
 
     def __init__(self, *, dims, num_channels, temporal_kernel, num_kernel=64,
@@ -168,7 +198,7 @@ class IntermediateFusionDeformer(nn.Module):
 
         #dim = sum(dims)  # if I add max pool then this must be halved
         #dim = int(0.5 * sum(dims))
-        dims = [int(0.5 * d) for d in dims]
+        #dims = [int(0.5 * d) for d in dims]
 
         self.to_patch_embedding = Rearrange('b k c f -> b k (c f)')
 
@@ -270,10 +300,10 @@ if __name__ == "__main__":
     dummy_model = IntermediateFusionDeformer(
         dims=[4 * 128, 6 * 32, 4 * 32, 10 * 32],
         num_channels=[16, 1, 1, 1],
+        mlp_dim=16,
         depth=4,
         heads=16,
         dim_head=16,
-        mlp_dim=16,
         num_kernel=64,
         emb_dim=256,
         out_dim=2,

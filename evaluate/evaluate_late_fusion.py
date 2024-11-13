@@ -11,7 +11,7 @@ from tqdm import tqdm
 from utils.fixseed import fixseed
 from utils.parser_util import late_fusion_evaluation_args, model_parser
 from utils.eval_util import run_model_on_eval, save_dict, get_y_targets
-from utils.model_util import create_unimodal_deformer, load_model
+from utils.model_util import create_model, load_model
 from load.load_data import get_data_loader
 import utils.tasks as tasks
 
@@ -86,7 +86,7 @@ def combine_unimodal_cross_validation_logs(args, dir_to_modality):
 
 
 def get_unimodal_model(args, model_path, model_args):
-    unimodal_model = create_unimodal_deformer(model_args)
+    unimodal_model = create_model(model_args)
     model_state_dict = torch.load(
         model_path, map_location='cpu', weights_only=False)
     load_model(unimodal_model, model_state_dict)
@@ -166,7 +166,7 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
             model_ckpt = f"model{step:09d}.pt" 
             modality_save_dir = combined_args[modality]['save_dir']
             model_path = os.path.join(modality_save_dir, f, model_ckpt)
-            model_args = model_parser(is_unimodal=True, model_path=model_path)
+            model_args = model_parser(model_path=model_path)
 
             unimodal_model, model_device = get_unimodal_model(args, model_path, model_args)
 

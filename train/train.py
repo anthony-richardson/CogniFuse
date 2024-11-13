@@ -1,22 +1,23 @@
 import os
 
-from utils.model_util import count_parameters, create_multimodal_deformer, create_unimodal_deformer
+from utils.model_util import count_parameters, create_model #, create_unimodal_deformer
 from load.load_data import get_data_loader
 import utils.tasks as tasks
 from train.training_loop import TrainingLoop
 from utils.train_platforms import TensorboardPlatform
 from utils.fixseed import fixseed
-from utils.parser_util import multimodal_deformer_train_args, unimodal_deformer_train_args, is_multimodal
+from utils.parser_util import train_args, is_multimodal
 
 
 def main():
-    multimodal = is_multimodal()
-    if multimodal:
-        args = multimodal_deformer_train_args()
-        deformer_model = create_multimodal_deformer(args)
-    else:
-        args = unimodal_deformer_train_args()
-        deformer_model = create_unimodal_deformer(args)
+    #multimodal = is_multimodal()
+    #if multimodal:
+    args = train_args()
+    deformer_model = create_model(args)
+    #else:
+        #args = unimodal_deformer_train_args()
+    #    args = train_args()
+    #    deformer_model = create_model(args)
 
     fixseed(args.seed)
 
