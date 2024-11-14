@@ -186,67 +186,37 @@ class IntermediateFusionDeformer(nn.Module, BaseBenchmarkModel):
             #nn.MaxPool2d((1, 2), stride=(1, 2))  # maybe remove
         )
 
-    def __init__(self, *, dims, num_channels, temporal_kernel, num_kernel=64,
-                 emb_dim, out_dim, depth=4, heads=16,
-                 mlp_dim=16, dim_head=16, dropout=0.):
+    def __init__(self, *, num_time, num_chan, temporal_kernel, num_kernel,
+                 emb_dim, out_dim, depth, heads,
+                 mlp_dim, dim_head, dropout):
         super().__init__()
 
         self.cnn_encoders = nn.ModuleList([])
-        for chan in num_channels:
-            cnn_encoder = self.cnn_block(out_chan=num_kernel, kernel_size=(1, temporal_kernel), num_chan=chan)
+        for chan, temp_k, num_k in zip(num_chan, temporal_kernel, num_kernel):
+            cnn_encoder = self.cnn_block(out_chan=num_k, kernel_size=(1, temp_k), num_chan=chan)
             self.cnn_encoders.append(cnn_encoder)
-
-        #dim = sum(dims)  # if I add max pool then this must be halved
-        #dim = int(0.5 * sum(dims))
-        #dims = [int(0.5 * d) for d in dims]
 
         self.to_patch_embedding = Rearrange('b k c f -> b k (c f)')
 
-        #self.pos_embedding = nn.Parameter(torch.randn(1, num_kernel, dim))
-
         self.pos_embeddings = nn.ParameterList([])
-        for dim in dims:
-            pos_embedding = nn.Parameter(torch.randn(1, num_kernel, dim))
+        for dim, num_k in zip(num_time, num_kernel):
+            pos_embedding = nn.Parameter(torch.randn(1, num_k, dim))
             self.pos_embeddings.append(pos_embedding)
 
         self.transformers = nn.ModuleList([])
         out_size = 0
-        for dim in dims:
-            #pos_embedding = nn.Parameter(torch.randn(1, num_kernel, dim))
+        for dim, mlp_d, temp_k, num_k in zip(num_time, mlp_dim, temporal_kernel, num_kernel):
             transformer_model = Transformer(
                 dim=dim, depth=depth, heads=heads, dim_head=dim_head,
-                mlp_dim=mlp_dim, dropout=dropout,
-                in_chan=num_kernel, fine_grained_kernel=temporal_kernel,
+                mlp_dim=mlp_d, dropout=dropout,
+                in_chan=num_k, fine_grained_kernel=temp_k,
             )
-            #modality_transformer = nn.Sequential(
-            #    pos_embedding,
-            #    transformer_model
-            #)
+            
             self.transformers.append(transformer_model)
 
             L = self.get_hidden_size(input_size=dim, num_layer=depth)
-            modality_out_size = int(num_kernel * L[-1]) + int(num_kernel * depth)
-            #print(int(num_kernel * L[-1]), int(num_kernel * depth), modality_out_size)
+            modality_out_size = int(num_k * L[-1]) + int(num_k * depth)
             out_size += modality_out_size
-
-        
-        
-
-        """self.transformer = Transformer(
-            dim=dim, depth=depth, heads=heads, dim_head=dim_head,
-            mlp_dim=mlp_dim, dropout=dropout,
-            in_chan=num_kernel, fine_grained_kernel=temporal_kernel,
-        )"""
-
-        #print((out_size))
-        #exit()
-
-        #L = self.get_hidden_size(input_size=dim, num_layer=depth)
-
-        #print(L)
-        #exit()
-
-        #out_size = int(num_kernel * L[-1]) + int(num_kernel * depth)
 
         self.mlp_head = FeedForward(
             out_size, hidden_dim=emb_dim, out_dim=out_dim, dropout=dropout
@@ -298,17 +268,17 @@ if __name__ == "__main__":
     out = emt(data)'''
 
     dummy_model = IntermediateFusionDeformer(
-        dims=[4 * 128, 6 * 32, 4 * 32, 10 * 32],
-        num_channels=[16, 1, 1, 1],
-        mlp_dim=16,
+        num_time=[4 * 128, 6 * 32, 4 * 32, 10 * 32],
+        num_chan=[16, 1, 1, 1],
+        mlp_dim=[16, 16, 16, 16],
+        num_kernel=[64, 4, 4, 4],
+        temporal_kernel=[13, 13, 13, 13],
+        emb_dim=256,
         depth=4,
         heads=16,
         dim_head=16,
-        num_kernel=64,
-        emb_dim=256,
-        out_dim=2,
-        temporal_kernel=13,
-        dropout=0.
+        dropout=0.,
+        out_dim=2
     )
 
     dummy_eeg = torch.randn(1, 16, 4 * 128)

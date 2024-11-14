@@ -62,7 +62,7 @@ def get_args_per_group_name(parser, args, group_name):
 
 def get_model_path_from_args():
     try:
-        dummy_parser = ArgumentParser()
+        dummy_parser = ArgumentParser(add_help=False)
         dummy_parser.add_argument('--model_path')
         dummy_args, _ = dummy_parser.parse_known_args()
         model_path = dummy_args.model_path
@@ -75,8 +75,10 @@ def get_model_path_from_args():
 
 
 def get_output_size_from_task():
-    dummy_parser = ArgumentParser()
-    dummy_parser.add_argument('--task')
+    dummy_parser = ArgumentParser(add_help=False)
+    #dummy_parser.add_argument('--task')
+    add_task_option(dummy_parser)
+
     dummy_args, _ = dummy_parser.parse_known_args()
     task_tools = getattr(tasks, dummy_args.task)
     nr_classes = len(set(task_tools.get_mapper().values()))
@@ -104,7 +106,7 @@ def add_data_options(parser, cross_validate=False):
 
     if not cross_validate:
         # Determining the fold options.
-        dummy_parser = ArgumentParser()
+        dummy_parser = ArgumentParser(add_help=False)
         dummy_parser.add_argument("--data_dir",
                                   default=os.path.join(os.getcwd(), 'data', 'folds'),
                                   type=str, help="Directory where the data splits are stored.")
@@ -146,7 +148,7 @@ def add_seed(parser):
 
 def add_multimodal_option(parser):
     group = parser.add_argument_group('multimodal')
-    group.add_argument("--multimodal", choices=[0, 1], default=0, type=int,
+    group.add_argument("--multimodal", choices=[0, 1], required=True, type=int,
                        help="Whether the model is multimodal or not.")
 
 
@@ -170,10 +172,12 @@ def add_task_option(parser):
             cls_name = obj.__name__
             if cls_name != 'ABC' and cls_name != 'Task':
                 task_choices.append(cls_name)
+    if len(task_choices) == 0:
+        raise Exception('No task options found.')
 
     group = parser.add_argument_group('task')
     group.add_argument("--task", choices=task_choices,
-                       required=True, type=str, help="Different tasks.")
+                       default=task_choices[0], type=str, help="Different tasks.")
 
 
 def train_args(cross_validate=False):
@@ -185,7 +189,7 @@ def train_args(cross_validate=False):
     add_task_option(parser)
     add_training_options(parser)
 
-    dummy_parser = ArgumentParser()
+    dummy_parser = ArgumentParser(add_help=False)
     add_base_options(dummy_parser)
 
     if not is_multimodal():
@@ -236,7 +240,7 @@ def late_fusion_evaluation_args():
 
 
 def is_multimodal():
-    dummy_parser = ArgumentParser()
+    dummy_parser = ArgumentParser(add_help=False)
     add_multimodal_option(dummy_parser)
     dummy_args, _ = dummy_parser.parse_known_args()
     multimodal = dummy_args.multimodal

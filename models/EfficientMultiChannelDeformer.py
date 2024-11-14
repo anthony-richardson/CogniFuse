@@ -367,7 +367,7 @@ class EfficientMultiChannelDeformer(nn.Module, BaseBenchmarkModel):
         super().__init__()
 
         self.cnn_encoders = nn.ModuleList([])
-        print(num_chan, num_kernel, temporal_kernel)
+        #print(num_chan, num_kernel, temporal_kernel)
         for chan, num_kern, temporal_kern in zip(num_chan, num_kernel, temporal_kernel):
             cnn_encoder = self.cnn_block(out_chan=num_kern, kernel_size=(1, temporal_kern), num_chan=chan)
             self.cnn_encoders.append(cnn_encoder)
