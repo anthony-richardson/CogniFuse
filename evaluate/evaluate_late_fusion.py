@@ -1,5 +1,7 @@
 # For validating and testing late fusion 
 # based on unimodal cross validation results.
+# Note that script this also supports using different models for the 
+# different modalities as weel as fusing multiple models that use the same modality. 
 
 import os
 import json

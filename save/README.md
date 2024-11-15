@@ -1,5 +1,12 @@
 # Recreating the benchmark
 
+For the next run of the benchmark change the following:
+- also scale emb_dim 
+- prior to benchmark test if increasing the mlp_dim for EfficientMultiChannelDeformer imporves results (and does not add a lot of parameters)
+- find a optimization scheme or schedule that works well for all of the models
+- redo the scaling
+
+
 Unimodal:
 
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimodal 0 --modality eeg  --model_name UnimodalDeformer --task SwitchingTaskPresence --cuda 1 --device 0
@@ -28,60 +35,61 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimo
 Scaling procedure: 
 +- 0.1% (3893) Parameters compared to cross modal deformer (3893338 * 0.001 = 3893.338)
 --> lower limit: 3889445, upper limit: 3897231
-Scaling factor applied to mlp_dim, dim_head, heads, num_kernel (all hyper parameters that are not fixed, e.g. number of channels, or would drastically change the architecture, e.g. depth)
+Scaling factor applied to mlp_dim, dim_head, heads, num_kernel (all hyperparameters that are not fixed, e.g. number of channels, or would drastically change the architecture, e.g. depth)
+(TODO: add emb_dim to the scaled hyperparameters)
 
 -----------
-
-TODO FROM HERE ON
 
 Unimodal (scaled up): 
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m unimodal.train.cross_validate_unimodal_deformer --task ControlledSwitchingLowHigh --device 3 --modality eeg --mlp_dim 34 --dim_head 41 --heads 41 --num_kernel 163
-(Parameters: 4326173, scaling factor: 2.55)
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimodal 0 --modality eeg  --model_name UnimodalDeformer --task SwitchingTaskPresence --cuda 1 --device 0 --mlp_dim 30 --dim_head 30 --heads 30 --num_kernel 119
+(Parameters: 3892209, scaling factor: 1.86)
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m unimodal.train.cross_validate_unimodal_deformer --task ControlledSwitchingLowHigh --device 4 --modality ppg --mlp_dim 83 --dim_head 55 --heads 55 --num_kernel 222
-(Parameters: 4317964, scaling factor: 3.465)
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimodal 0 --modality ppg --model_name UnimodalDeformer --task SwitchingTaskPresence --cuda 1 --device 1 --mlp_dim 73 --dim_head 73 --heads 73 --num_kernel 18
+(Parameters: 3890214, scaling factor: 4.55)
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m unimodal.train.cross_validate_unimodal_deformer --task ControlledSwitchingLowHigh --device 5 --modality eda --mlp_dim 60 --dim_head 58 --heads 59 --num_kernel 237
-(Parameters: 4317896, scaling factor: 3.7)
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimodal 0 --modality eda --model_name UnimodalDeformer --task SwitchingTaskPresence --cuda 1 --device 2 --mlp_dim 90 --dim_head 90 --heads 88 --num_kernel 33
+(Parameters: 3892994, scaling factor: 5.65)
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m unimodal.train.cross_validate_unimodal_deformer --task ControlledSwitchingLowHigh --device 6 --modality resp --mlp_dim 53 --dim_head 50 --heads 49 --num_kernel 198
-(Parameters: 4317892, scaling factor: 3.09)
-
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimodal 0 --modality resp --model_name UnimodalDeformer --task SwitchingTaskPresence --cuda 1 --device 3 --mlp_dim 57 --dim_head 57 --heads 56 --num_kernel 15
+(Parameters: 3889478, scaling factor: 3.55)
 
 -----------
 
-Crossmodal deformer:
+Crossmodal deformer (scaled up):
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m multimodal.train.cross_validate_cross_modal_deformer --task ControlledSwitchingLowHigh --device 2 --fusion_type crossmodal
-(Parameters: 4322194)
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimodal 1  --model_name MultiChannelDeformer --task SwitchingTaskPresence --cuda 1 --device 0 --mlp_dim 10 --dim_head 12 --heads 11 --num_kernel 45
+(Parameters: 3889519, scaling factor: 0.71)
 
 -----------
 
 Early fusion deformer (scaled up):
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m multimodal.train.cross_validate_cross_modal_deformer --task ControlledSwitchingLowHigh --device 1 --fusion_type early --mlp_dim 37 --dim_head 29 --heads 30 --num_kernel 122
-(Parameters: 4318074, scaling factor: 1.9)
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimodal 1  --model_name EarlyFusionDeformer --task SwitchingTaskPresence --cuda 1 --device 1 --mlp_dim 26 --dim_head 20 --heads 20 --num_kernel 80
+(Parameters: 3891514, scaling factor: 1.25)
 
 -----------
 
 Intermediate fusion deformer (scaled up):
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m multimodal.train.cross_validate_cross_modal_deformer --task ControlledSwitchingLowHigh --device 5 --fusion_type intermediate --mlp_dim 23 --dim_head 24 --heads 24 --num_kernel 89
-(Parameters: 4325977, scaling factor: 1.45)
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimodal 1  --model_name IntermediateFusionDeformer --task SwitchingTaskPresence --cuda 1 --device 2 --mlp_dim 24 24 24 24 --dim_head 23 --heads 23 --num_kernel 91 6 6 6
+(Parameters: 3890597, scaling factor: 1.42)
 
 -----------
 
 Late fusion deformer: 
 
-python -m multimodal.train.cross_validate_late_fusion --modality_save_dirs unimodal/save/eeg/2024.10.15-07:30:11 unimodal/save/ppg/2024.10.15-07:32:17
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m evaluate.evaluate_late_fusion --split validation --cuda 1 --device 0 --modality_save_dirs [LIST_OF_UNIMODAL_DIRECTORIES]
 
 -----------
 
-Repeat everything for the tasks:
-- SwitchBackAuditivePresenceRelax
-- SwitchBackAuditivePresence
-- VisualSearchTaskPresence
+The above commands create the results or the task 'SwitchingTaskPresence'
+
+Repeat everything for the following tasks: 
+(as these four tasks have the same number of classes we can use the same hyper parameters)
+- 'SwitchBackAuditivePresenceRelax'
+- 'SwitchBackAuditivePresence'
+- 'VisualSearchTaskPresence'
 
 
 

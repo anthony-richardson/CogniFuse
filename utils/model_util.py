@@ -29,9 +29,12 @@ def get_model_cls(model_name):
     try:
         mod = importlib.import_module('models.' + model_name)
     except ModuleNotFoundError:
-        raise ValueError(f'There is no equally named model class in models.{model_name}')
+        raise ValueError(f'There is no equally named file in models.{model_name}')
 
-    model_cls = getattr(mod, model_name)
+    try:
+        model_cls = getattr(mod, model_name)
+    except ModuleNotFoundError:
+        raise ValueError(f'There is no equally named model class in the model file.{model_name}')
     return model_cls
 
 
@@ -39,7 +42,7 @@ def get_model_arguments(args, model_cls):
     default_out_dim = args.out_dim,
     modality = None if args.multimodal else args.modality
 
-    # We intentionally do not parser this parser so that the user is not required
+    # We intentionally do not parse this parser so that the user is not required
     # to pass them in the command line in cases where that is not needed.
     dummy_parser = ArgumentParser()
     dummy_parser_group = dummy_parser.add_argument_group('model')

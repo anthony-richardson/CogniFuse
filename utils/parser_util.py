@@ -20,8 +20,14 @@ def parse_and_load_from_model(parser, model_path):
     with open(args_path, 'r') as fr:
         model_args = json.load(fr)
 
+    add_multimodal_option(parser)
+    add_model_name_option(parser)
+
     add_seed(parser)
-    group_names = ['seed', 'model']
+    group_names = ['seed', 'model', 'multimodal', 'model_name']
+    if not model_args['multimodal']:
+        add_modality_option(parser)
+        group_names.append('modality')
 
     parser_group = parser.add_argument_group('model')
 
@@ -30,7 +36,6 @@ def parse_and_load_from_model(parser, model_path):
     get_model_cls(model_name).add_model_options(
         parser_group=parser_group,
         default_out_dim=out_dim,
-        # TODO: see if model_args['multimodal'] is a string or int after load from json and if it needs casting
         modality=None if model_args['multimodal'] else model_args['modality']
     )
 
@@ -90,12 +95,18 @@ def add_base_options(parser):
     group.add_argument("--cuda", choices=[0, 1], default=0, type=int, help="Use cuda device, otherwise use CPU.")
     group.add_argument("--device", default=0, type=int, help="Device id to use.")
 
+    
+def add_model_name_option(parser):
+    group = parser.add_argument_group('model_name')
     model_dir = os.path.join(os.getcwd(), 'models')
     model_name_options = [name.split('.')[0] for name in os.listdir(model_dir)
                           if os.path.isfile(os.path.join(model_dir, name))
                           and name.endswith('.py')]
+    if len(model_name_options) == 0:
+        raise Exception('No model name options found.')
+
     group.add_argument("--model_name", type=str, help="The file name containing the equally named model class.",
-                       choices=model_name_options, required=True)
+                    choices=model_name_options, default=model_name_options[-1])
 
 
 def add_data_options(parser, cross_validate=False):
@@ -148,14 +159,14 @@ def add_seed(parser):
 
 def add_multimodal_option(parser):
     group = parser.add_argument_group('multimodal')
-    group.add_argument("--multimodal", choices=[0, 1], required=True, type=int,
+    group.add_argument("--multimodal", choices=[0, 1], default=1, type=int,
                        help="Whether the model is multimodal or not.")
 
 
 def add_modality_option(parser):
     group = parser.add_argument_group('modality')
     group.add_argument("--modality", choices=['eeg', 'ppg', 'eda', 'resp'],
-                       required=True, type=str, help="Different modalities.")
+                       default='eeg', type=str, help="Different modalities.")
 
 
 def add_evaluation_options(parser):
@@ -183,6 +194,7 @@ def add_task_option(parser):
 def train_args(cross_validate=False):
     parser = ArgumentParser()
     add_base_options(parser)
+    add_model_name_option(parser)
     add_multimodal_option(parser)
     add_seed(parser)
     add_data_options(parser, cross_validate)
@@ -190,7 +202,8 @@ def train_args(cross_validate=False):
     add_training_options(parser)
 
     dummy_parser = ArgumentParser(add_help=False)
-    add_base_options(dummy_parser)
+    #add_base_options(dummy_parser)
+    add_model_name_option(dummy_parser)
 
     if not is_multimodal():
         add_modality_option(parser)
