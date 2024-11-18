@@ -21,7 +21,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimo
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimodal 0 --modality resp  --model_name UnimodalDeformer --task SwitchingTaskPresence --cuda 1 --device 3
 (Parameters: 322066)
 
-Added up unimdal paramaters: 2062696 
+Added up unimodal parameters: 2062696 
 
 -----------
 
@@ -33,7 +33,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.train_cross_validation --multimo
 -----------
 
 Scaling procedure: 
-+- 0.1% (3893) Parameters compared to cross modal deformer (3893338 * 0.001 = 3893.338)
++- 0.1% (3893) Parameters compared to efficient cross modal deformer (3893338 * 0.001 = 3893.338)
 --> lower limit: 3889445, upper limit: 3897231
 Scaling factor applied to mlp_dim, dim_head, heads, num_kernel (all hyperparameters that are not fixed, e.g. number of channels, or would drastically change the architecture, e.g. depth)
 (TODO: add emb_dim to the scaled hyperparameters)
@@ -86,7 +86,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m evaluate.evaluate_late_fusion --split 
 The above commands create the results or the task 'SwitchingTaskPresence'
 
 Repeat everything for the following tasks: 
-(as these four tasks have the same number of classes we can use the same hyper parameters)
+(as these four tasks have the same number of classes we can use the same hyperparameters)
 - 'SwitchBackAuditivePresenceRelax'
 - 'SwitchBackAuditivePresence'
 - 'VisualSearchTaskPresence'
