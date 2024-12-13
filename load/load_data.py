@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 
 
 class CogniFitDataset(torch.utils.data.Dataset):
-    def __init__(self, data_path, tasks=None, difficulties=None):
+    def __init__(self, data_path, tasks=None):
         # We decide to load all data instead of loading on demand. Depending on the usa case
         # data loaders should only provide a subset of the data (e.g. for one task), requiring
         # to search through all samples.
@@ -13,23 +13,22 @@ class CogniFitDataset(torch.utils.data.Dataset):
         filtered_data = []
         # Filtering
         for d in complete_data:
-            if d['difficulty'] > 0:
-                d['task'] += f'_{d['difficulty']}'
+            #if d['difficulty'] > 0:
+            #    d['task'] += f'_{d['difficulty']}'
 
-            if ((tasks is None or d['task'] in tasks) and
-                    (difficulties is None or d['difficulty'] in difficulties)):
-
+            #if ((tasks is None or d['scenario'] in tasks) and
+            #        (difficulties is None or d['difficulty'] in difficulties)):
+            if tasks is None or d['scenario'] in tasks:
                 filtered_data.append((
                     d['participant_id'],
-                    d['task'],
+                    #d['task'],
+                    d['scenario'],
                     d['eeg'],
                     d['ppg'],
                     d['eda'],
                     d['resp'],
                 ))
 
-        # TODO: change preprocessing of data so that it is already structured as a scenario
-        #   Then remove the logic above accordingly.
         self.data = np.array(filtered_data, dtype=[
                 ('participant_id', 'i4'),
                 ('scenario', 'U30'),

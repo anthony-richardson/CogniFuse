@@ -30,7 +30,7 @@ def log2pandas(path):
     return runlog_data
 
 
-def cross_validate(folds, save_dir: str):
+def cross_validate(folds, save_dir: str, f1_score_variant: str):
     best_fold_checkpoints = {}
     best_scores = []
     accuracies_for_best_scores = []
@@ -43,7 +43,7 @@ def cross_validate(folds, save_dir: str):
         log_path = os.path.join(log_dir, log_file_name)
 
         df = log2pandas(log_path)
-        df_f1 = df[df.metric == 'Loss/validation_f1_score']
+        df_f1 = df[df.metric == f'Loss/validation_{f1_score_variant}_f1_score']
 
         checkpoint_steps = [
             int(p.strip('model').strip('.pt')) for p in os.listdir(log_dir)
@@ -67,7 +67,7 @@ def cross_validate(folds, save_dir: str):
         best_fold_checkpoints[f] = {
             'step': step,
             'accuracy': acc,
-            'f1-score': value
+            f'{f1_score_variant} f1-score': value
         }
 
         best_scores.append(value)
@@ -75,8 +75,8 @@ def cross_validate(folds, save_dir: str):
 
     avg_score = np.mean(best_scores)
     std_score = np.std(best_scores)
-    best_fold_checkpoints['f1-score mean'] = avg_score
-    best_fold_checkpoints['f1-score standard deviation'] = std_score
+    best_fold_checkpoints[f'{f1_score_variant} f1-score mean'] = avg_score
+    best_fold_checkpoints[f'{f1_score_variant} f1-score standard deviation'] = std_score
 
     avg_acc = np.mean(accuracies_for_best_scores)
     std_acc = np.std(accuracies_for_best_scores)

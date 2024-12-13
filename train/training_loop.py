@@ -26,7 +26,8 @@ class TrainingLoop:
         self.num_epochs = self.num_steps // len(self.train_data) + 1
         print(f"Number of epochs: {self.num_epochs}")
         self.save_dir = save_dir
-        self.nr_classes = args.out_dim
+        self.f1_score_variant = args.f1_score_variant
+        #self.nr_classes = args.out_dim
 
         self.task_tools = task_tools
 
@@ -160,10 +161,14 @@ class TrainingLoop:
         )
 
         # Normal f1 score like in https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
-        avg = 'binary'
+        """avg = 'binary'
         if self.nr_classes > 2:
             # Unweighted average for all classes
-            avg = 'macro'
+            avg = 'macro'"""
+
+        # micro f1 score is the same as accuracy on binary task.
+        # The cognifit paper uses accuracy: https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
+        #avg = 'micro'
 
         f1 = f1_score(
             targets.cpu().detach().numpy(),
@@ -171,12 +176,12 @@ class TrainingLoop:
             # When all predictions and labels are negative
             zero_division=1.0,
             # Unweighted average for all classes
-            average=avg
+            average=self.f1_score_variant
         )
         metrics = {
             'cross_entropy': cross_entropy,
             'accuracy': accuracy,
-            'f1_score': f1
+            f'{self.f1_score_variant}_f1_score': f1
         }
         return metrics
 

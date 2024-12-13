@@ -30,7 +30,7 @@ def main():
             *pass_through_args
         ])
 
-    best_fold_checkpoints = cross_validate(folds, args.save_dir)
+    best_fold_checkpoints = cross_validate(folds, args.save_dir, args.f1_score_variant)
 
     best_fold_checkpoints = OrderedDict(sorted(best_fold_checkpoints.items()))
     val_save_path = os.path.join(args.save_dir, 'cross_validation.json')

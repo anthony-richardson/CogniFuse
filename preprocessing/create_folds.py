@@ -7,15 +7,16 @@ import random
     We choose to randomly, but fixed, separate 10% of the participants for testing.
     For the remaining participants perform 10-fold cross validation.
     The resulting splits are 108:12:14 in participants or 81:9:10 in percent.
-    We fix and store therese folds so that all models may use the same splits.
+    We fix and store these folds so that all models may use the same splits.
 '''
 
 
 def create_array(data_list):
     arr = np.array(data_list, dtype=[
             ('participant_id', 'i4'),
-            ('task', 'U30'),
-            ('difficulty', 'i4'),
+            #('task', 'U30'),
+            #('difficulty', 'i4'),
+            ('scenario', 'U30'),
             ('eeg', 'O'),
             ('ppg', 'O'),
             ('eda', 'O'),

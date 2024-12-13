@@ -1,6 +1,8 @@
 # Save
 save/*
 
+preprocessing/filter_examples/*
+
 # Data
 data/*
 *.npy

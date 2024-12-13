@@ -106,7 +106,7 @@ def add_model_name_option(parser):
         raise Exception('No model name options found.')
 
     group.add_argument("--model_name", type=str, help="The file name containing the equally named model class.",
-                    choices=model_name_options, default=model_name_options[-1])
+                       choices=model_name_options, default=model_name_options[-1])
 
 
 def add_data_options(parser, cross_validate=False):
@@ -144,6 +144,8 @@ def add_training_options(parser):
                        help="Save checkpoints and run validation each N epochs")
     group.add_argument("--num_steps", default=200_000, type=int,
                        help="Training will stop after the specified number of steps.")
+    group.add_argument("--f1_score_variant", type=str, help="The variant of the f1-score tu use.",
+                       choices=["binary", "micro", "macro", "weighted", "samples"], default="micro")
 
 
 def add_save_dir_path(parser, default_save_dir):

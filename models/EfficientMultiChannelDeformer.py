@@ -42,8 +42,16 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
     def forward(self, x, other_channels_output):
         # Stacking the other channels on the kernel dimension.
         # This allows the use of different numbers of kernels for the modalities.
+
+        #for o in other_channels_output:
+        #    print(o.shape)
+
         x_agg = torch.cat(other_channels_output, dim=-2) #dim=-1)
         #print(f'hi: {x.shape}')
+
+        #print(x_agg.shape)
+
+        #exit()
 
         x = x + self.sa(x, x_agg, x_agg)
 
@@ -62,7 +70,7 @@ def pair(t):
 
 
 class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, out_dim, dropout=0.):
+    def __init__(self, dim, hidden_dim, out_dim, dropout=0., end_w_dropout=True):
         super().__init__()
         self.net = nn.Sequential(
             nn.LayerNorm(dim),
@@ -70,7 +78,8 @@ class FeedForward(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, out_dim),
-            nn.Dropout(dropout)
+            # nn.Dropout(dropout)
+            nn.Dropout(dropout) if end_w_dropout else nn.Identity()
         )
 
     def forward(self, x):
@@ -169,14 +178,16 @@ class Transformer(nn.Module):
             ffwd = FeedForward(
                 dim=output_size,
                 hidden_dim=emb_dim,
-                out_dim=emb_dim
+                out_dim=emb_dim,
+                end_w_dropout=False
             )
             self.modality_compression_layers.append(ffwd)
 
         self.output_ffwd = FeedForward(
             dim=sum(emb_dims), #emb_dim * len(dims),
             hidden_dim=sum(emb_dims), #emb_dim,
-            out_dim=out_dim
+            out_dim=out_dim,
+            end_w_dropout=False
         )
 
         inner_dim = dim_head * heads

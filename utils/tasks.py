@@ -56,6 +56,17 @@ class SwitchingTaskPresence(Task):
         return mapper
 
 
+# maybe true c0 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
+class SwitchingTask3Presence(Task):
+    @staticmethod
+    def get_mapper():
+        mapper = {
+            'Relax_before_LCT': 0,
+            'SwitchingTask_3': 1
+        }
+        return mapper
+
+
 class SwitchingTaskDifficulty3(Task):
     @staticmethod
     def get_mapper():
@@ -92,6 +103,17 @@ class SwitchBackAuditivePresenceRelax(Task):
         return mapper
 
 
+# maybe true u0 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
+class SwitchBackAuditive3PresenceRelax(Task):
+    @staticmethod
+    def get_mapper():
+        mapper = {
+            'Relax_during_LCT': 0,
+            'SwitchBackAuditive_3': 1
+        }
+        return mapper
+
+
 # u1 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
 class SwitchBackAuditivePresence(Task):
     @staticmethod
@@ -100,6 +122,17 @@ class SwitchBackAuditivePresence(Task):
             'LCT_Baseline': 0,
             'SwitchBackAuditive_1': 1,
             'SwitchBackAuditive_2': 1,
+            'SwitchBackAuditive_3': 1
+        }
+        return mapper
+
+
+# maybe true u1 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
+class SwitchBackAuditive3Presence(Task):
+    @staticmethod
+    def get_mapper():
+        mapper = {
+            'LCT_Baseline': 0,
             'SwitchBackAuditive_3': 1
         }
         return mapper
@@ -134,6 +167,17 @@ class VisualSearchTaskPresence(Task):
             'LCT_Baseline': 0,
             'VisualSearchTask_1': 1,
             'VisualSearchTask_2': 1,
+            'VisualSearchTask_3': 1
+        }
+        return mapper
+
+
+# maybe true u2 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
+class VisualSearchTask3Presence(Task):
+    @staticmethod
+    def get_mapper():
+        mapper = {
+            'LCT_Baseline': 0,
             'VisualSearchTask_3': 1
         }
         return mapper

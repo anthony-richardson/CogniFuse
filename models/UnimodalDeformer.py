@@ -36,7 +36,7 @@ def pair(t):
 
 
 class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, out_dim, dropout=0.):
+    def __init__(self, dim, hidden_dim, out_dim, dropout=0., end_w_dropout=True):
         super().__init__()
         self.net = nn.Sequential(
             nn.LayerNorm(dim),
@@ -44,7 +44,8 @@ class FeedForward(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, out_dim),
-            nn.Dropout(dropout)
+            #nn.Dropout(dropout)
+            nn.Dropout(dropout) if end_w_dropout else nn.Identity()
         )
 
     def forward(self, x):
@@ -229,7 +230,11 @@ class UnimodalDeformer(nn.Module, BaseBenchmarkModel):
         out_size = int(num_kernel * L[-1]) + int(num_kernel * depth)
 
         self.mlp_head = FeedForward(
-            out_size, hidden_dim=emb_dim, out_dim=out_dim, dropout=dropout
+            out_size,
+            hidden_dim=emb_dim,
+            out_dim=out_dim,
+            dropout=dropout,
+            end_w_dropout=False
         )
         '''self.mlp_head = nn.Sequential(
             nn.Linear(out_size, emb_dim)
@@ -270,7 +275,8 @@ if __name__ == "__main__":
         depth=4,
         heads=16,
         dim_head=16,
-        dropout=0.5,
+        dropout=0.2,
+        #dropout=0.5,
         out_dim=2
     )
     print(emt)

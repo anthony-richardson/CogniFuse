@@ -1,10 +1,11 @@
 # Recreating the benchmark
 
 For the next run of the benchmark change the following:
-- also scale emb_dim 
-- prior to benchmark test if increasing the mlp_dim for EfficientMultiChannelDeformer imporves results (and does not add a lot of parameters)
-- find a optimization scheme or schedule that works well for all of the models
-- redo the scaling
+- redo the dataset creation with new/shuffled subject ids
+- also scale emb_dim and redo the scaling
+- prior to benchmark test if increasing the mlp_dim for EfficientMultiChannelDeformer improves results (and does not add a lot of parameters)
+- Observation: learning rate might still be too high. Test lower lr out on examples
+- find an optimization scheme or schedule that works well for all the models
 
 
 Unimodal:

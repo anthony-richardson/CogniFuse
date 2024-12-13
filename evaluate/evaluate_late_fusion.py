@@ -204,19 +204,19 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
         accuracies_for_best_scores.append(accuracy)
         best_scores.append(f1)
 
-        combined_logs[f]['early fusion'] = {}
-        combined_logs[f]['early fusion']['accuracy'] = accuracy
-        combined_logs[f]['early fusion']['f1-score'] = f1.item()
+        combined_logs[f]['late fusion'] = {}
+        combined_logs[f]['late fusion']['accuracy'] = accuracy
+        combined_logs[f]['late fusion']['f1-score'] = f1.item()
 
     avg_acc = np.mean(accuracies_for_best_scores)
     std_acc = np.std(accuracies_for_best_scores)
-    combined_logs['accuracy mean']['early fusion'] = avg_acc.item()
-    combined_logs['accuracy standard deviation']['early fusion'] = std_acc.item()
+    combined_logs['accuracy mean']['late fusion'] = avg_acc.item()
+    combined_logs['accuracy standard deviation']['late fusion'] = std_acc.item()
 
     avg_score = np.mean(best_scores)
     std_score = np.std(best_scores)
-    combined_logs['f1-score mean']['early fusion'] = avg_score.item()
-    combined_logs['f1-score standard deviation']['early fusion'] = std_score.item()
+    combined_logs['f1-score mean']['late fusion'] = avg_score.item()
+    combined_logs['f1-score standard deviation']['late fusion'] = std_score.item()
 
 
 def main():
