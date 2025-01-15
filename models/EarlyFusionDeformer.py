@@ -152,7 +152,7 @@ class EarlyFusionDeformer(nn.Module, BaseBenchmarkModel):
     def add_model_options(parser_group, default_out_dim, modality=None):
         #group = parser.add_argument_group('model')
 
-        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 32, 4 * 32, 10 * 32], type=int, nargs="+",
+        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 128, 4 * 64, 10 * 32], type=int, nargs="+",
                            help="Number of time steps for the resp modality")
         parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
                            help="Number of channels for the modalities")
@@ -214,7 +214,10 @@ class EarlyFusionDeformer(nn.Module, BaseBenchmarkModel):
         out_size = int(num_kernel * L[-1]) + int(num_kernel * depth)
 
         self.mlp_head = FeedForward(
-            out_size, hidden_dim=emb_dim, out_dim=out_dim, dropout=dropout
+            out_size, 
+            hidden_dim=emb_dim, 
+            out_dim=out_dim#, 
+            #dropout=dropout
         )
 
     def forward(self, channels):
@@ -222,12 +225,15 @@ class EarlyFusionDeformer(nn.Module, BaseBenchmarkModel):
         for i, chan in enumerate(channels):
             chan = torch.unsqueeze(chan, dim=1)  # (b, 1, channels, time)
             chan = self.cnn_encoders[i](chan)
-            chan = self.to_patch_embedding(chan)
+            chan = self.to_patch_embedding(chan) # (b, channels, time)
             b, n, _ = chan.shape
             #chan += self.pos_embeddings[i]
             channels[i] = chan
+            #print(chan.shape)
 
-        x = torch.cat(channels, dim=-1)
+        x = torch.cat(channels, dim=-1) # (b, channels, sum of times)
+        #print(x.shape)
+        #exit()
 
         #eeg = torch.unsqueeze(eeg, dim=1)  # (b, 1, chan, time)
         #x = self.cnn_encoder(eeg)  # (b, num_kernel, 1, 0.5*num_time)

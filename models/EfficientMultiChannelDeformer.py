@@ -338,7 +338,7 @@ class EfficientMultiChannelDeformer(nn.Module, BaseBenchmarkModel):
         #group = parser.add_argument_group('model')
 
         # These can vary between modalities
-        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 32, 4 * 32, 10 * 32], type=int, nargs="+",
+        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 128, 4 * 64, 10 * 32], type=int, nargs="+",
                            help="Number of time steps for the resp modality")
         parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
                            help="Number of channels for the modalities")

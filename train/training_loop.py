@@ -1,7 +1,7 @@
 import blobfile as bf
 import torch
 import torch.nn.functional as F
-from torch.optim import AdamW
+from torch.optim import AdamW, Adam
 from sklearn.metrics import accuracy_score, f1_score
 import numpy as np
 
@@ -20,6 +20,7 @@ class TrainingLoop:
         self.lr = args.lr
         self.save_interval = args.save_interval
         self.weight_decay = args.weight_decay
+        self.optimizer = args.optimizer
         self.step = 0
         self.epoch = 0
         self.num_steps = args.num_steps
@@ -38,11 +39,20 @@ class TrainingLoop:
 
         self.is_multimodal = args.multimodal
 
-        self.opt = AdamW(
-            self.model.parameters(),
-            lr=self.lr,
-            weight_decay=self.weight_decay
-        )
+        if self.optimizer == 'AdamW':
+            self.opt = AdamW(
+                self.model.parameters(),
+                lr=self.lr,
+                weight_decay=self.weight_decay
+            )
+        elif self.optimizer == 'Adam':
+            self.opt = Adam(
+                self.model.parameters(),
+                lr=self.lr,
+                weight_decay=self.weight_decay
+            )
+        else: 
+            raise Exception('Unknown optimizer.')
 
         if args.cuda:
             self.device = torch.device(f"cuda:{args.device}")

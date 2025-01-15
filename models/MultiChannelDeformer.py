@@ -123,10 +123,16 @@ class Attention(nn.Module):
 
         self.attend = nn.Softmax(dim=-1)
         #self.to_qkv = nn.Linear(dim, inner_dim * 3, bias=False)
-        
+
+        # Verison without additive bias
         self.to_q = nn.Linear(q_dim, inner_dim, bias=False)
         self.to_k = nn.Linear(kv_dim, inner_dim, bias=False)
         self.to_v = nn.Linear(kv_dim, inner_dim, bias=False)
+
+        # With additive bias
+        #self.to_q = nn.Linear(q_dim, inner_dim, bias=True)
+        #self.to_k = nn.Linear(kv_dim, inner_dim, bias=True)
+        #self.to_v = nn.Linear(kv_dim, inner_dim, bias=True)
 
         self.to_out = nn.Sequential(
             nn.Linear(inner_dim, q_dim),
@@ -326,11 +332,12 @@ class MultiChannelDeformer(nn.Module, BaseBenchmarkModel):
     def add_model_options(parser_group, default_out_dim, modality=None):
         #group = parser.add_argument_group('model')
 
-        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 32, 4 * 32, 10 * 32], type=int, nargs="+",
-                           help="Number of time steps for the resp modality")
+        #parser_group.add_argument("--num_time", default=[4 * 128, 6 * 32, 4 * 32, 10 * 32], type=int, nargs="+",
+        #                   help="Number of time steps for the resp modality")
+        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 128, 4 * 64, 10 * 32], type=int, nargs="+",
+                           help="Number of time steps for the resp modality")        
         parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
                            help="Number of channels for the modalities")
-
         parser_group.add_argument("--mlp_dim", default=16, type=int, help="Dimension of MLP")
         parser_group.add_argument("--num_kernel", default=64, type=int, help="Number of kernels")
         parser_group.add_argument("--temporal_kernel", default=13, type=int, help="Length of temporal kernels")

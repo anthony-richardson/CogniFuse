@@ -137,15 +137,23 @@ def add_training_options(parser):
     #group.add_argument("--lr", default=0.001, type=float, help="Learning rate.")
     # TODO: this lr is the same as in multimodal for comparison (see if it reaches
     #  the same f-score as with higher lr. If so, stick to lower)
-    group.add_argument("--lr", default=0.00001, type=float, help="Learning rate.")
+    #group.add_argument("--lr", default=0.00001, type=float, help="Learning rate.")
+    group.add_argument("--lr", default=1e-05, type=float, help="Learning rate.")
+    #group.add_argument("--lr", default=1e-06, type=float, help="Learning rate.")
     group.add_argument("--weight_decay", default=0.0001,
                        type=float, help="Optimizer weight decay.")
+    # TODO: This is used in eeg deformer paper
+    #group.add_argument("--weight_decay", default=1e-05,
+    #                   type=float, help="Optimizer weight decay.")
     group.add_argument("--save_interval", default=5, type=int,
                        help="Save checkpoints and run validation each N epochs")
     group.add_argument("--num_steps", default=200_000, type=int,
                        help="Training will stop after the specified number of steps.")
-    group.add_argument("--f1_score_variant", type=str, help="The variant of the f1-score tu use.",
+    group.add_argument("--f1_score_variant", type=str, help="The variant of the f1-score to use.",
                        choices=["binary", "micro", "macro", "weighted", "samples"], default="micro")
+    group.add_argument("--optimizer", type=str, help="The optimizer to use.",
+                       choices=["Adam", "AdamW"], default="AdamW")
+
 
 
 def add_save_dir_path(parser, default_save_dir):
@@ -227,13 +235,16 @@ def train_args(cross_validate=False):
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
 
     if is_multimodal():
-        default_save_dir = os.path.join(os.getcwd(), 'save', 'multimodal',
-                                        model_name, timestamp)
+        default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
+        				'multimodal', model_name, timestamp)
     else:
         modality = dummy_args.modality
-        default_save_dir = os.path.join(os.getcwd(), 'save', 'unimodal',
-                                        model_name, modality, timestamp)
+        default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
+        				'unimodal', model_name, modality, timestamp)
     add_save_dir_path(parser, default_save_dir=default_save_dir)
+    
+    #print(default_save_dir)
+    #exit()
     return parser.parse_args()
 
 
@@ -248,8 +259,10 @@ def late_fusion_evaluation_args():
                         required=True, help="Save directories of the individual modalities.")
 
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
-    default_save_dir = os.path.join(os.getcwd(), 'save', 'multimodal',
-                                    'LateFusionDeformer', timestamp)
+    #default_save_dir = os.path.join(os.getcwd(), 'save', 'multimodal',
+    #                                'LateFusionDeformer', timestamp)
+    default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
+        			    'multimodal', 'LateFusionDeformer', timestamp)
     add_save_dir_path(parser, default_save_dir=default_save_dir)
     return parser.parse_args()
 

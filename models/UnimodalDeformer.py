@@ -167,9 +167,9 @@ class UnimodalDeformer(nn.Module, BaseBenchmarkModel):
             num_kernel = 4
             emb_dim = 16
             if modality == "ppg":
-                num_time = 6 * 32
+                num_time = 6 * 128
             elif modality == "eda":
-                num_time = 4 * 32
+                num_time = 4 * 64
             elif modality == "resp":
                 num_time = 10 * 32
             else:

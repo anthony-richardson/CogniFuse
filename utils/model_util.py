@@ -2,8 +2,9 @@ import importlib
 from argparse import ArgumentParser
 import argparse
 from abc import ABC, abstractmethod
+from torch import nn
 
-
+#class BaseBenchmarkModel(nn.Module, ABC):
 class BaseBenchmarkModel(ABC):
     # Returns a dictionary that maps
     # from task name to class number.

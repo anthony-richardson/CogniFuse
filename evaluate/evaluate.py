@@ -1,9 +1,6 @@
-# For validating and testing late fusion 
-# based on unimodal cross validation results.
-# Note that script this also supports using different models for the 
-# different modalities as weel as fusing multiple models that use the same modality. 
+# TODO: For validating and testing all models except late fusion.
 
-# TODO: integrate into cross validation script at the end with test data as param (in case late fusion)
+# TODO: integrate into cross validation script at the end with test data as param (in case not late fusion)
 
 import os
 import json

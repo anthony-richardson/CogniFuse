@@ -152,7 +152,7 @@ class IntermediateFusionDeformer(nn.Module, BaseBenchmarkModel):
     def add_model_options(parser_group, default_out_dim, modality=None):
         #group = parser.add_argument_group('model')
 
-        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 32, 4 * 32, 10 * 32], type=int, nargs="+",
+        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 128, 4 * 64, 10 * 32], type=int, nargs="+",
                            help="Number of time steps for the resp modality")
         parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
                            help="Number of channels for the modalities")
