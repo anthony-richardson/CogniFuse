@@ -126,7 +126,9 @@ class Transformer(nn.Module):
 
     def get_info(self, x):
         # x: b, k, l
+        #print(x.shape)
         x = torch.log(torch.mean(x.pow(2), dim=-1))
+        #print(x.shape)
         return x
 
     def get_padding_1D(self, kernel):
@@ -165,8 +167,9 @@ class EarlyFusionDeformer(nn.Module, BaseBenchmarkModel):
         parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
         parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
         parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
-        parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
+        #parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
         # TODO: analyse what rate is better
+        parser_group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
         # group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
         parser_group.add_argument("--out_dim", default=default_out_dim, type=int,
                            help="Size of the output. For classification tasks, this is the number of classes.")

@@ -168,8 +168,9 @@ class IntermediateFusionDeformer(nn.Module, BaseBenchmarkModel):
         parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
         parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
         parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
-        parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
+        #parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
         # TODO: analyse what rate is better
+        parser_group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
         # group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
         parser_group.add_argument("--out_dim", default=default_out_dim, type=int,
                            help="Size of the output. For classification tasks, this is the number of classes.")

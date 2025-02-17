@@ -5,6 +5,8 @@
 
 # TODO: integrate into cross validation script at the end with test data as param (in case late fusion)
 
+# TODO: parameterize with the f1 score variant instead of hardcoding micro f1-score
+
 import os
 import json
 import torch
@@ -108,7 +110,7 @@ def get_unimodal_model(args, model_path, model_args):
 def calc_modality_weights(fold, modalities, combined_logs):
     scores = {}
     for modality in modalities:
-        modality_f1_score = combined_logs[fold][modality]['f1-score']
+        modality_f1_score = combined_logs[fold][modality]['micro f1-score']
         scores[modality] = modality_f1_score
     scores_sum = sum(scores.values())
     weights = {}
@@ -189,10 +191,12 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
         accuracy = accuracy_score(y_targets.cpu().detach().numpy(), predicted_labels.cpu().detach().numpy())
 
         # Normal f1 score like in https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
-        avg = 'binary'
-        if nr_classes > 2:
-            # Unweighted average for all classes
-            avg = 'macro'
+        #avg = 'binary'
+        #if nr_classes > 2:
+        #    # Unweighted average for all classes
+        #    avg = 'macro'
+            
+        avg = 'micro'
 
         f1 = f1_score(
             y_targets.cpu().detach().numpy(),
@@ -208,7 +212,7 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
 
         combined_logs[f]['late fusion'] = {}
         combined_logs[f]['late fusion']['accuracy'] = accuracy
-        combined_logs[f]['late fusion']['f1-score'] = f1.item()
+        combined_logs[f]['late fusion']['micro f1-score'] = f1.item()
 
     avg_acc = np.mean(accuracies_for_best_scores)
     std_acc = np.std(accuracies_for_best_scores)
@@ -217,8 +221,8 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
 
     avg_score = np.mean(best_scores)
     std_score = np.std(best_scores)
-    combined_logs['f1-score mean']['late fusion'] = avg_score.item()
-    combined_logs['f1-score standard deviation']['late fusion'] = std_score.item()
+    combined_logs['micro f1-score mean']['late fusion'] = avg_score.item()
+    combined_logs['micro f1-score standard deviation']['late fusion'] = std_score.item()
 
 
 def main():

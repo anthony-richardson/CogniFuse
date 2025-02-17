@@ -10,14 +10,14 @@ import numpy as np
 from tqdm import tqdm
 
 from utils.fixseed import fixseed
-from utils.parser_util import late_fusion_evaluation_args, model_parser
+from utils.parser_util import evaluation_args, model_parser
 from utils.eval_util import run_model_on_eval, save_dict, get_y_targets
 from utils.model_util import create_model, load_model
 from load.load_data import get_data_loader
 import utils.tasks as tasks
 
 
-def combine_unimodal_args(args):
+'''def combine_unimodal_args(args):
     modality_save_dirs = args.modality_save_dirs
 
     task_list = []
@@ -49,10 +49,10 @@ def combine_unimodal_args(args):
 
     assert len(set(dir_to_modality.values())) == len(dir_to_modality.values()), 'The same modality is used more than once!'
 
-    return combined_args, dir_to_modality, task
+    return combined_args, dir_to_modality, task'''
 
 
-def combine_unimodal_cross_validation_logs(args, dir_to_modality):
+'''def combine_cross_validation_logs(args, dir_to_modality):
     modality_save_dirs = args.modality_save_dirs
 
     combined_logs = {}
@@ -83,10 +83,10 @@ def combine_unimodal_cross_validation_logs(args, dir_to_modality):
             assert key in combined_logs.keys(), 'The keys of the modality log files are not matching!'
             combined_logs[key][modality] = cross_validation_log[key]
 
-    return combined_logs, folds
+    return combined_logs, folds'''
 
 
-def get_unimodal_model(args, model_path, model_args):
+def get_model(args, model_path, model_args):
     unimodal_model = create_model(model_args)
     model_state_dict = torch.load(
         model_path, map_location='cpu', weights_only=False)
@@ -102,7 +102,7 @@ def get_unimodal_model(args, model_path, model_args):
     return unimodal_model, device
 
 
-def calc_modality_weights(fold, modalities, combined_logs):
+'''def calc_modality_weights(fold, modalities, combined_logs):
     scores = {}
     for modality in modalities:
         modality_f1_score = combined_logs[fold][modality]['f1-score']
@@ -111,12 +111,16 @@ def calc_modality_weights(fold, modalities, combined_logs):
     weights = {}
     for key in scores.keys():
         weights[key] = scores[key] / scores_sum
-    return weights
+    return weights'''
 
 
-def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities):
+def run_evaluation(args, logs, task):
+    folds = [k for k in logs.keys() if 'mean' not in k and 'deviation' not in k]
+
+    #print(folds)
+
     task_tools = getattr(tasks, task)
-    nr_classes = combined_args[list(modalities)[0]]['out_dim']
+    #nr_classes = combined_args[list(modalities)[0]]['out_dim']
 
     if args.split == 'validation':
         evaluation_data = {}
@@ -145,12 +149,14 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
     else:
         raise Exception('Unknown evaluation split.')
 
+    evaluation_results = {}
+
     accuracies_for_best_scores = []
     best_scores = []
     for f in tqdm(folds):
-        modality_weights = calc_modality_weights(
-            f, modalities, combined_logs
-        )
+        #modality_weights = calc_modality_weights(
+        #    f, modalities, combined_logs
+        #)
 
         if args.split == 'validation':
             data_loader = evaluation_data[f]
@@ -161,35 +167,55 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
 
         y_targets = get_y_targets(data_loader, task_tools)
 
-        unimodal_predictions_list = []
-        for modality in modalities:
-            step = combined_logs[f][modality]['step']
-            model_ckpt = f"model{step:09d}.pt" 
-            modality_save_dir = combined_args[modality]['save_dir']
-            model_path = os.path.join(modality_save_dir, f, model_ckpt)
-            model_args = model_parser(model_path=model_path)
+        step = logs[f]['step']
+        model_ckpt = f"model{step:09d}.pt" 
+        #modality_save_dir = combined_args[modality]['save_dir']
+        model_path = os.path.join(args.base_dir, f, model_ckpt)
+        model_args = model_parser(model_path=model_path)
 
-            unimodal_model, model_device = get_unimodal_model(args, model_path, model_args)
+        model, model_device = get_model(args, model_path, model_args)
 
-            unimodal_predictions = run_model_on_eval(
-                unimodal_model, data_loader, model_device, modality=modality)
+        if model_args.multimodal:
+            modality = None
+        else: 
+            modality = model_args.modality
 
-            unimodal_predictions = torch.mul(
-                unimodal_predictions, modality_weights[modality]
-            )
-            unimodal_predictions_list.append(unimodal_predictions)
+        y_predictions = run_model_on_eval(
+            model, data_loader, model_device, modality
+        )
 
-        unimodal_predictions_tensor = torch.stack(unimodal_predictions_list, dim=0)  
-        fused_predictions = torch.sum(unimodal_predictions_tensor, dim=0)
 
-        predicted_labels = torch.argmax(fused_predictions, dim=-1)
+        #unimodal_predictions_list = []
+        #for modality in modalities:
+        #    step = combined_logs[f][modality]['step']
+        #    model_ckpt = f"model{step:09d}.pt" 
+        #    modality_save_dir = combined_args[modality]['save_dir']
+        #    model_path = os.path.join(modality_save_dir, f, model_ckpt)
+        #    model_args = model_parser(model_path=model_path)
+
+        #    unimodal_model, model_device = get_unimodal_model(args, model_path, model_args)
+
+        #    unimodal_predictions = run_model_on_eval(
+        #        unimodal_model, data_loader, model_device, modality=modality)
+
+            #unimodal_predictions = torch.mul(
+            #    unimodal_predictions, modality_weights[modality]
+            #)
+            #unimodal_predictions_list.append(unimodal_predictions)
+
+        #unimodal_predictions_tensor = torch.stack(unimodal_predictions_list, dim=0)  
+        #fused_predictions = torch.sum(unimodal_predictions_tensor, dim=0)
+
+        predicted_labels = torch.argmax(y_predictions, dim=-1)
         accuracy = accuracy_score(y_targets.cpu().detach().numpy(), predicted_labels.cpu().detach().numpy())
 
         # Normal f1 score like in https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
-        avg = 'binary'
-        if nr_classes > 2:
-            # Unweighted average for all classes
-            avg = 'macro'
+        #avg = 'binary'
+        #if nr_classes > 2:
+        #    # Unweighted average for all classes
+        #    avg = 'macro'
+
+        avg = 'micro'
 
         f1 = f1_score(
             y_targets.cpu().detach().numpy(),
@@ -203,38 +229,64 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
         accuracies_for_best_scores.append(accuracy)
         best_scores.append(f1)
 
-        combined_logs[f]['late fusion'] = {}
-        combined_logs[f]['late fusion']['accuracy'] = accuracy
-        combined_logs[f]['late fusion']['f1-score'] = f1.item()
+        evaluation_results[f] = {}
+        evaluation_results[f]['step'] = step
+        evaluation_results[f]['accuracy'] = accuracy
+        evaluation_results[f]['micro f1-score'] = f1.item()
+
+        #combined_logs[f]['late fusion'] = {}
+        #combined_logs[f]['late fusion']['accuracy'] = accuracy
+        #combined_logs[f]['late fusion']['micro f1-score'] = f1.item()
 
     avg_acc = np.mean(accuracies_for_best_scores)
     std_acc = np.std(accuracies_for_best_scores)
-    combined_logs['accuracy mean']['late fusion'] = avg_acc.item()
-    combined_logs['accuracy standard deviation']['late fusion'] = std_acc.item()
+    evaluation_results['accuracy mean'] = avg_acc.item()
+    evaluation_results['accuracy standard deviation'] = std_acc.item()
 
     avg_score = np.mean(best_scores)
     std_score = np.std(best_scores)
-    combined_logs['f1-score mean']['late fusion'] = avg_score.item()
-    combined_logs['f1-score standard deviation']['late fusion'] = std_score.item()
+    evaluation_results['micro f1-score mean'] = avg_score.item()
+    evaluation_results['micro f1-score standard deviation'] = std_score.item()
+
+    return evaluation_results
 
 
 def main():
-    args = late_fusion_evaluation_args()
+    args = evaluation_args()
     fixseed(args.seed)
 
-    combined_args, dir_to_modality, task = combine_unimodal_args(args)
+    model_args_path = os.path.join(os.path.dirname(args.base_dir), 'args.json')
+    # Load args from model
+    assert os.path.exists(model_args_path), 'Arguments json file was not found!'
+    with open(model_args_path, 'r') as fr:
+        model_args = json.load(fr)
+
+    logs_path = os.path.join(os.path.dirname(args.base_dir), 'cross_validation.json')
+    assert os.path.exists(logs_path), 'Logs json file was not found!'
+    with open(logs_path, 'r') as fr:
+        logs = json.load(fr)
+
+    task = model_args['task']
+
+    #print(model_args)
+    #print(args)
+    #print(logs)
+
+    #exit()
+
+    #combined_args, dir_to_modality, task = combine_unimodal_args(args)
     
-    combined_logs, folds = combine_unimodal_cross_validation_logs(args, dir_to_modality)
-    run_late_fusion(args, combined_logs, combined_args, folds, task, dir_to_modality.values())
+    #combined_logs, folds = combine_unimodal_cross_validation_logs(args, dir_to_modality)
+    evaluation_results = run_evaluation(args, logs, task)
 
-    args_dict = dict(vars(args))
-    for key in args_dict:
-        if key != 'split':
-            combined_args['late_fusion'][key] = getattr(args, key)
+    #args_dict = dict(vars(args))
+    #for key in args_dict:
+    #    if key != 'split':
+    #        combined_args['late_fusion'][key] = getattr(args, key)
 
-    save_dict(combined_args, args.save_dir, 'args')
-    save_dict(combined_logs, args.save_dir, args.split)
-    print(f'Stored results in {args.save_dir}')
+    #save_dict(combined_args, args.save_dir, 'args')
+    save_dict(evaluation_results, args.base_dir, args.split)
+    print(f'Stored results in {args.base_dir}')
     
 
 if __name__ == '__main__':

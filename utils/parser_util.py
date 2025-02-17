@@ -9,6 +9,7 @@ import utils.tasks as tasks
 from utils.model_util import get_model_cls
 
 
+# TODO: is this being used or is it replaced by create_model in model_util?
 def parse_and_load_from_model(parser, model_path):
     if model_path is None:
         model_path = get_model_path_from_args()
@@ -159,7 +160,13 @@ def add_training_options(parser):
 def add_save_dir_path(parser, default_save_dir):
     group = parser.add_argument_group('save_directory')
     group.add_argument("--save_dir", default=default_save_dir,
-                       type=str, help="Directory for saving checkpoints or results.")
+                    type=str, help="Directory for saving checkpoints or results.")
+
+
+def add_base_dir_path(parser):
+    group = parser.add_argument_group('base_directory')
+    group.add_argument("--base_dir", required=True, 
+                    type=str, help="Base diretory of the stored models for each fold.")
 
 
 def add_seed(parser):
@@ -255,6 +262,7 @@ def late_fusion_evaluation_args():
     add_evaluation_options(parser)
     add_seed(parser)
 
+    # TODO: Rename to modality_base_dirs
     parser.add_argument("--modality_save_dirs", type=str, nargs="+",
                         required=True, help="Save directories of the individual modalities.")
 
@@ -264,6 +272,51 @@ def late_fusion_evaluation_args():
     default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
         			    'multimodal', 'LateFusionDeformer', timestamp)
     add_save_dir_path(parser, default_save_dir=default_save_dir)
+    return parser.parse_args()
+
+
+def evaluation_args():
+    parser = ArgumentParser()
+    add_base_options(parser)
+    add_data_options(parser, cross_validate=True)
+    add_evaluation_options(parser)
+    add_seed(parser)
+
+    add_base_dir_path(parser)
+
+    dummy_parser = ArgumentParser(add_help=False)
+    #add_base_options(dummy_parser)
+    add_base_dir_path(dummy_parser)
+    dummy_args, _ = dummy_parser.parse_known_args()
+    base_dir = dummy_args.base_dir
+
+    #args_path = os.path.join(os.path.dirname(base_dir), 'args.json')
+
+    # Load args from model
+    #assert os.path.exists(args_path), 'Arguments json file was not found!'
+    #with open(args_path, 'r') as fr:
+    #    model_args = json.load(fr)
+
+
+    #add_save_dir_path(parser, default_save_dir=None, is_required=True)
+    #parser.add_argument("--modality_save_dirs", type=str, nargs="+",
+    #                    required=True, help="Save directories of the individual modalities.")
+
+    #timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
+    #default_save_dir = os.path.join(os.getcwd(), 'save', 'multimodal',
+    #                                'LateFusionDeformer', timestamp)
+
+    #if model_args.multimodal:
+    #    default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
+    #    				'multimodal', model_name, timestamp)
+    #else:
+    #    modality = dummy_args.modality
+    #    default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
+    #    				'unimodal', model_name, model_args.modality, timestamp)
+
+    #default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
+    #    			    'multimodal', 'LateFusionDeformer', timestamp)
+    add_save_dir_path(parser, default_save_dir=base_dir)
     return parser.parse_args()
 
 

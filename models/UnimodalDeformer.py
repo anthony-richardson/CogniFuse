@@ -183,9 +183,9 @@ class UnimodalDeformer(nn.Module, BaseBenchmarkModel):
         parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
         parser_group.add_argument("--mlp_dim", default=16, type=int, help="Dimension of MLP")
         parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
-        parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
+        #parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
         # TODO: analyse what rate is better
-        # group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
+        parser_group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
         # group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
         parser_group.add_argument("--emb_dim", default=emb_dim, type=int, help="Embedding dimension")
         parser_group.add_argument("--out_dim", default=default_out_dim, type=int,
