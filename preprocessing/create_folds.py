@@ -14,8 +14,6 @@ import random
 def create_array(data_list):
     arr = np.array(data_list, dtype=[
             ('participant_id', 'i4'),
-            #('task', 'U30'),
-            #('difficulty', 'i4'),
             ('scenario', 'U30'),
             ('eeg', 'O'),
             ('ppg', 'O'),

@@ -4,9 +4,9 @@ import torch.nn.functional as F
 from torch.optim import AdamW, Adam
 from sklearn.metrics import accuracy_score, f1_score
 import numpy as np
+from tqdm import tqdm
 
 from utils import logger
-from tqdm import tqdm
 
 
 class TrainingLoop:
@@ -28,7 +28,6 @@ class TrainingLoop:
         print(f"Number of epochs: {self.num_epochs}")
         self.save_dir = save_dir
         self.f1_score_variant = args.f1_score_variant
-        #self.nr_classes = args.out_dim
 
         self.task_tools = task_tools
 
@@ -170,22 +169,11 @@ class TrainingLoop:
             predictions.cpu().detach().numpy()
         )
 
-        # Normal f1 score like in https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
-        """avg = 'binary'
-        if self.nr_classes > 2:
-            # Unweighted average for all classes
-            avg = 'macro'"""
-
-        # micro f1 score is the same as accuracy on binary task.
-        # The cognifit paper uses accuracy: https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
-        #avg = 'micro'
-
         f1 = f1_score(
             targets.cpu().detach().numpy(),
             predictions.cpu().detach().numpy(),
             # When all predictions and labels are negative
             zero_division=1.0,
-            # Unweighted average for all classes
             average=self.f1_score_variant
         )
         metrics = {
@@ -219,7 +207,7 @@ class TrainingLoop:
 
 
 def get_blob_logdir():
-    # You can change this to be a separate path to save checkpoints to
+    # Can be changed to be a separate path to save checkpoints to
     # a blobstore or some external drive.
     return logger.get_dir()
 

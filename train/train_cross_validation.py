@@ -4,7 +4,7 @@ import subprocess
 from collections import OrderedDict
 
 from utils.fixseed import fixseed
-from utils.parser_util import train_args, is_multimodal, get_pass_through_args
+from utils.parser_util import train_args, get_pass_through_args
 from utils.eval_util import cross_validate, save_args
 from utils.model_util import create_model
 

@@ -7,12 +7,10 @@ class Parameters:
     EEG_TIME_WINDOW = 4
     EEG_SHAPE = (16, EEG_FREQ * EEG_TIME_WINDOW)
 
-    #PPG_FREQ = 32
     PPG_FREQ = 128
     PPG_TIME_WINDOW = 6
     PPG_SHAPE = (1, PPG_FREQ * PPG_TIME_WINDOW)
 
-    #EDA_FREQ = 32
     EDA_FREQ = 64
     EDA_TIME_WINDOW = 4
     EDA_SHAPE = (1, EDA_FREQ * EDA_TIME_WINDOW)
@@ -65,8 +63,6 @@ def main():
 
     data_with_all_modalities = np.array(data_with_all_modalities_list, dtype=[
             ('participant_id', 'i4'),
-            #('task', 'U30'),
-            #('difficulty', 'i4'),
             ('scenario', 'U30'),
             ('eeg', 'O'),
             ('ppg', 'O'),

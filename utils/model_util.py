@@ -44,7 +44,7 @@ def get_model_arguments(args, model_cls):
     modality = None if args.multimodal else args.modality
 
     # We intentionally do not parse this parser so that the user is not required
-    # to pass them in the command line in cases where that is not needed.
+    # to pass the arguments in the command line in cases where that is not needed.
     dummy_parser = ArgumentParser()
     dummy_parser_group = dummy_parser.add_argument_group('model')
     model_cls.add_model_options(dummy_parser_group, default_out_dim, modality)

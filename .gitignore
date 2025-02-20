@@ -2,6 +2,9 @@
 save/*
 
 preprocessing/filter_examples/*
+# Excluding the following script as it contains 
+# information about the anonymization procedure. 
+preprocessing/preprocess.py
 
 # Data
 data/*

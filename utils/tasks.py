@@ -41,7 +41,6 @@ class Task(ABC):
         return class_labels
 
 
-# c0 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
 class SwitchingTaskPresence(Task):
     @staticmethod
     def get_mapper():
@@ -56,7 +55,7 @@ class SwitchingTaskPresence(Task):
         return mapper
 
 
-# maybe true c0 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
+# Switching vs. Relax from our benchmark and c0 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
 class SwitchingTask3Presence(Task):
     @staticmethod
     def get_mapper():
@@ -88,7 +87,6 @@ class SwitchingTaskDifficulty2(Task):
         return mapper
 
 
-# u0 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
 class SwitchBackAuditivePresenceRelax(Task):
     @staticmethod
     def get_mapper():
@@ -103,7 +101,7 @@ class SwitchBackAuditivePresenceRelax(Task):
         return mapper
 
 
-# maybe true u0 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
+# Auditive vs. Relax from our benchmark and u0 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
 class SwitchBackAuditive3PresenceRelax(Task):
     @staticmethod
     def get_mapper():
@@ -114,7 +112,6 @@ class SwitchBackAuditive3PresenceRelax(Task):
         return mapper
 
 
-# u1 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
 class SwitchBackAuditivePresence(Task):
     @staticmethod
     def get_mapper():
@@ -127,7 +124,7 @@ class SwitchBackAuditivePresence(Task):
         return mapper
 
 
-# maybe true u1 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
+# Auditive vs. LC from our benchmark and u1 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
 class SwitchBackAuditive3Presence(Task):
     @staticmethod
     def get_mapper():
@@ -159,7 +156,6 @@ class SwitchBackAuditiveDifficulty2(Task):
         return mapper
 
 
-# u2 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
 class VisualSearchTaskPresence(Task):
     @staticmethod
     def get_mapper():
@@ -172,7 +168,7 @@ class VisualSearchTaskPresence(Task):
         return mapper
 
 
-# maybe true u2 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
+# Visual vs. LC from our benchmark and u2 from https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
 class VisualSearchTask3Presence(Task):
     @staticmethod
     def get_mapper():
@@ -221,11 +217,7 @@ class TaskDiscrimination(Task):
         return mapper
 
 
-# TODO
 class UserDiscrimination(Task):
     @staticmethod
     def get_mapper():
-        mapper = {
-            '': 0,
-        }
-        return mapper
+        raise NotImplementedError

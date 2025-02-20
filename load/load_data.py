@@ -13,15 +13,9 @@ class CogniFitDataset(torch.utils.data.Dataset):
         filtered_data = []
         # Filtering
         for d in complete_data:
-            #if d['difficulty'] > 0:
-            #    d['task'] += f'_{d['difficulty']}'
-
-            #if ((tasks is None or d['scenario'] in tasks) and
-            #        (difficulties is None or d['difficulty'] in difficulties)):
             if tasks is None or d['scenario'] in tasks:
                 filtered_data.append((
                     d['participant_id'],
-                    #d['task'],
                     d['scenario'],
                     d['eeg'],
                     d['ppg'],
