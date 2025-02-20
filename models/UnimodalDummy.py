@@ -1,11 +1,11 @@
-# Example of a unimodal model for the benchmark. 
+# Dummy of a unimodal model for the benchmark. 
 
 import torch
 
 from utils.model_util import BaseBenchmarkModel
 
 
-class UnimodalExample(BaseBenchmarkModel):
+class UnimodalDummy(BaseBenchmarkModel):
     @staticmethod
     def add_model_options(parser_group, out_dim, modality=None):
         """
@@ -87,7 +87,7 @@ class UnimodalExample(BaseBenchmarkModel):
 
 
 if __name__ == "__main__":
-    dummy_model = UnimodalExample(
+    dummy_model = UnimodalDummy(
         num_time=4 * 128,
         num_chan=16,
         out_dim=2,

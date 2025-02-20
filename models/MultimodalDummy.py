@@ -1,11 +1,11 @@
-# Example of a multimodal model for the benchmark. 
+# Dummy of a multimodal model for the benchmark. 
 
 import torch
 
 from utils.model_util import BaseBenchmarkModel
 
 
-class MultimodalExample(BaseBenchmarkModel):
+class MultimodalDummy(BaseBenchmarkModel):
     @staticmethod
     def add_model_options(parser_group, out_dim, modality=None):
         """
@@ -71,7 +71,7 @@ class MultimodalExample(BaseBenchmarkModel):
 
 
 if __name__ == "__main__":
-    dummy_model = MultimodalExample(
+    dummy_model = MultimodalDummy(
         num_time=[4 * 128, 6 * 128, 4 * 64, 10 * 32],
         num_chan=[16, 1, 1, 1],
         out_dim=2,
