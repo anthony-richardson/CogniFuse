@@ -4,13 +4,13 @@ import argparse
 from abc import ABC, abstractmethod
 from torch import nn
 
-#class BaseBenchmarkModel(nn.Module, ABC):
-class BaseBenchmarkModel(ABC):
-    # Returns a dictionary that maps
-    # from task name to class number.
+# This is the base for all models in the benchmark.
+# Since the benchmark only supports the use of pytorch models,
+# this base class also restrict the user to such models.
+class BaseBenchmarkModel(nn.Module, ABC):
     @staticmethod
     @abstractmethod
-    def add_model_options(parser_group, default_out_dim, modality=None):
+    def add_model_options(parser_group, out_dim, modality=None):
         pass
 
 

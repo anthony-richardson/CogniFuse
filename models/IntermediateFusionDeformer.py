@@ -1,38 +1,13 @@
-# This is the script of EEG-Deformer
-# This is the network script
 import torch
 from torch import nn
 from einops import rearrange
 from einops.layers.torch import Rearrange
 
-#from utils.model_util import count_parameters
 from utils.model_util import BaseBenchmarkModel
 
-# TODO
-#  - think about and maybe replace random positional encoding by sin/cos encoding
-#  (random does not seem like it would guarantee no repetitions)
-#  - maybe the random operation also contributes to the large drop in training
-#  speed when forcing deterministic behaviour dor reproducibility
-#  - try sin/cos and compare if it still works and is as good as before
 
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
-
-
-'''class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, dropout=0.):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.LayerNorm(dim),
-            nn.Linear(dim, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, dim),
-            nn.Dropout(dropout)
-        )
-
-    def forward(self, x):
-        return self.net(x)'''
 
 
 class FeedForward(nn.Module):
@@ -99,7 +74,6 @@ class Transformer(nn.Module):
             dim = int(dim * 0.5)
             self.layers.append(nn.ModuleList([
                 Attention(dim, heads=heads, dim_head=dim_head, dropout=dropout),
-                #FeedForward(dim, mlp_dim, dropout=dropout),
                 FeedForward(dim, hidden_dim=mlp_dim, out_dim=dim, dropout=dropout),
                 self.cnn_block(in_chan=in_chan, kernel_size=fine_grained_kernel, dp=dropout)
             ]))
@@ -111,21 +85,17 @@ class Transformer(nn.Module):
             x_cg = self.pool(x)
             x_cg = attn(x_cg) + x_cg
             x_fg = cnn(x)
-            #print(x_fg.shape)
             x_info = self.get_info(x_fg)  # (b, in_chan)
-            #print(x_info.shape)
             dense_feature.append(x_info)
             x = ff(x_cg) + x_fg
 
-        #print(dense_feature.shape)
-        x_dense = torch.cat(dense_feature, dim=-1)  # b, in_chan*depth
-        #print(x_dense.shape)
-        x = x.view(x.size(0), -1)   # b, in_chan*d_hidden_last_layer
-        emd = torch.cat((x, x_dense), dim=-1)  # b, in_chan*(depth + d_hidden_last_layer)
+        x_dense = torch.cat(dense_feature, dim=-1)  # (b, in_chan * depth)
+        x = x.view(x.size(0), -1)   # (b, in_chan * d_hidden_last_layer)
+        emd = torch.cat((x, x_dense), dim=-1)  # (b, in_chan * (depth + d_hidden_last_layer))
         return emd
 
     def get_info(self, x):
-        # x: b, k, l
+        # x: (b, k, l)
         x = torch.log(torch.mean(x.pow(2), dim=-1))
         return x
 
@@ -147,11 +117,9 @@ class Conv2dWithConstraint(nn.Conv2d):
         return super(Conv2dWithConstraint, self).forward(x)
 
 
-class IntermediateFusionDeformer(nn.Module, BaseBenchmarkModel):
+class IntermediateFusionDeformer(BaseBenchmarkModel):
     @staticmethod
-    def add_model_options(parser_group, default_out_dim, modality=None):
-        #group = parser.add_argument_group('model')
-
+    def add_model_options(parser_group, out_dim, modality=None):
         parser_group.add_argument("--num_time", default=[4 * 128, 6 * 128, 4 * 64, 10 * 32], type=int, nargs="+",
                            help="Number of time steps for the resp modality")
         parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
@@ -168,23 +136,18 @@ class IntermediateFusionDeformer(nn.Module, BaseBenchmarkModel):
         parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
         parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
         parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
-        #parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
-        # TODO: analyse what rate is better
         parser_group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
-        # group.add_argument("--dropout", default=0.0, type=float, help="Dropout rate")
-        parser_group.add_argument("--out_dim", default=default_out_dim, type=int,
+        parser_group.add_argument("--out_dim", default=out_dim, type=int,
                            help="Size of the output. For classification tasks, this is the number of classes.")
 
     def cnn_block(self, out_chan, kernel_size, num_chan):
         return nn.Sequential(
             Conv2dWithConstraint(1, out_chan, kernel_size, padding=self.get_padding(kernel_size[-1]), max_norm=2),
-            #Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1), padding=0, max_norm=2),
             # Only do spatial convolution if there is more than one channel
             Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1),
                                  padding=0, max_norm=2) if num_chan > 1 else nn.Identity(),
             nn.BatchNorm2d(out_chan),
-            nn.ELU(),
-            #nn.MaxPool2d((1, 2), stride=(1, 2))  # maybe remove
+            nn.ELU()
         )
 
     def __init__(self, *, num_time, num_chan, temporal_kernel, num_kernel,
@@ -234,17 +197,8 @@ class IntermediateFusionDeformer(nn.Module, BaseBenchmarkModel):
             chan = self.transformers[i](chan)
             channels[i] = chan
 
-        
-
         x = torch.cat(channels, dim=-1)
 
-        #eeg = torch.unsqueeze(eeg, dim=1)  # (b, 1, chan, time)
-        #x = self.cnn_encoder(eeg)  # (b, num_kernel, 1, 0.5*num_time)
-        #x = self.to_patch_embedding(x)
-
-        #b, n, _ = x.shape
-        #x += self.pos_embedding
-        #x = self.transformer(x)
         return self.mlp_head(x)
 
     def get_padding(self, kernel):
@@ -259,17 +213,8 @@ def count_parameters(model):
 
 
 if __name__ == "__main__":
-    '''data = torch.ones((16, 32, 1000))
-    emt = EarlyFusionDeformer(num_chan=32, num_time=1000, temporal_kernel=11, num_kernel=64,
-                   emb_dim=256, out_dim=2, depth=4, heads=16,
-                   mlp_dim=16, dim_head=16, dropout=0.5)
-    print(emt)
-    print(count_parameters(emt))
-
-    out = emt(data)'''
-
     dummy_model = IntermediateFusionDeformer(
-        num_time=[4 * 128, 6 * 32, 4 * 32, 10 * 32],
+        num_time=[4 * 128, 6 * 128, 4 * 64, 10 * 32],
         num_chan=[16, 1, 1, 1],
         mlp_dim=[16, 16, 16, 16],
         num_kernel=[64, 4, 4, 4],
@@ -283,8 +228,8 @@ if __name__ == "__main__":
     )
 
     dummy_eeg = torch.randn(1, 16, 4 * 128)
-    dummy_ppg = torch.randn(1, 1, 6 * 32)
-    dummy_eda = torch.randn(1, 1, 4 * 32)
+    dummy_ppg = torch.randn(1, 1, 6 * 128)
+    dummy_eda = torch.randn(1, 1, 4 * 64)
     dummy_resp = torch.randn(1, 1, 10 * 32)
     channels = [
         dummy_eeg,

@@ -1,18 +1,10 @@
 import torch
 from torch import nn
-import copy
 from einops import rearrange
 from einops.layers.torch import Rearrange
 
 from utils.model_util import BaseBenchmarkModel
-#from utils.model_util import count_parameters
 
-# TODO
-#  - think about and maybe replace random positional encoding by sin/cos encoding
-#  (random does not seem like it would guarantee no repetitions)
-#  - maybe the random operation also contributes to the large drop in training
-#  speed when forcing deterministic behaviour dor reproducibility
-#  - try sin/cos and compare if it still works and is as good as before
 
 class CrossChannelTransformerEncoderLayer(nn.Module):
     def __init__(self, input_dimension, number_of_heads, dim_head, mlp_dims, dropout, out_dim=None):
@@ -20,7 +12,6 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
         
         self.sa = Attention(
             q_dim=input_dimension,
-            #kv_dim=sum(channels_time_dims),
             heads=number_of_heads,
             dim_head=dim_head,
             dropout=dropout,
@@ -29,47 +20,23 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
         )
         
         self.ffwd = FeedForward(
-            #dim=input_dimension,
             dim=input_dimension if out_dim is None else out_dim,
-            hidden_dim=sum(mlp_dims), #mlp_dim * 4, #input_dimension * 4,
-            # maybe reduce this to *2. But first do num kernels and emb dim. Then see if the impact is large
-            #hidden_dim=input_dimension * 2,
-            out_dim=out_dim if out_dim is not None else input_dimension #input_dimension
+            hidden_dim=sum(mlp_dims), 
+            out_dim=out_dim if out_dim is not None else input_dimension
         )
 
-        #self.ffwd = nn.Linear(input_dimension, out_dim if out_dim is not None else input_dimension)
-        
 
     def forward(self, x, x_q, other_channels_output):
         # Stacking the other channels on the kernel dimension.
         # This allows the use of different numbers of kernels for the modalities.
-
-        #for o in other_channels_output:
-        #    print(o.shape)
-
         k_other_channels = [k for x, q, k, v in other_channels_output]
         k_agg = torch.cat(k_other_channels, dim=-2)
 
         v_other_channels = [v for x, q, k, v in other_channels_output]
         v_agg = torch.cat(v_other_channels, dim=-2)
 
-        #x_agg = torch.cat(other_channels_output, dim=-2) #dim=-1)
-        #print(f'hi: {x.shape}')
-
-        #print(x_agg.shape)
-
-        #exit()
-
-        #x = x + self.sa(x, x_agg, x_agg)
         x = x + self.sa(x_q, k_agg, v_agg)
-
-        #print(x.shape)
-
-        #exit()
-        #x = x + self.ffwd(x)
         x = self.ffwd(x)
-
-        #exit()
         return x
 
 
@@ -86,7 +53,6 @@ class FeedForward(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, out_dim),
-            # nn.Dropout(dropout)
             nn.Dropout(dropout) if end_w_dropout else nn.Identity()
         )
 
@@ -105,8 +71,6 @@ class Attention(nn.Module):
         self.scale = dim_head ** -0.5
 
         self.attend = nn.Softmax(dim=-1)
-
-        #self.q_dim = q_dim
         
         if self.create_heads:
             self.to_q = nn.Linear(q_dim, inner_dim, bias=False)
@@ -114,25 +78,17 @@ class Attention(nn.Module):
             self.to_v = nn.Linear(q_dim, inner_dim, bias=False)
 
         if out_dim is not None:
-            #("hm")
-            #self.to_out = nn.Linear(inner_dim, out_dim)
             self.to_out = nn.Sequential(
                 nn.Linear(inner_dim, out_dim),
                 nn.Dropout(dropout)
             )
         else:
-            #print("hmhm")
             self.to_out = nn.Sequential(
                 nn.Linear(inner_dim, q_dim),
                 nn.Dropout(dropout)
             ) if project_out else nn.Identity()
 
     def forward(self, q, k, v):
-        #print(q.shape)
-        #print(k.shape)
-        #print(v.shape)
-
-        #print(self.q_dim)
         if self.create_heads:
             qkv = [
                 self.to_q(q), 
@@ -142,15 +98,7 @@ class Attention(nn.Module):
         else:
             qkv = [q, k, v]
 
-        #print(qkv[0].shape)
-        #print(qkv[1].shape)
-        #print(qkv[2].shape)
-
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h=self.heads), qkv)
-
-        #print(q.shape)
-        #print(k.shape)
-        #print(v.shape)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
 
@@ -179,9 +127,6 @@ class Transformer(nn.Module):
         self.modality_compression_layers = nn.ModuleList([])
         modality_output_sizes = self.get_modality_output_sizes(dims, depth, in_chans)
 
-        #print(modality_output_sizes)
-        #exit()
-
         for output_size, emb_dim in zip(modality_output_sizes, emb_dims):
             ffwd = FeedForward(
                 dim=output_size,
@@ -192,8 +137,8 @@ class Transformer(nn.Module):
             self.modality_compression_layers.append(ffwd)
 
         self.output_ffwd = FeedForward(
-            dim=sum(emb_dims), #emb_dim * len(dims),
-            hidden_dim=sum(emb_dims), #emb_dim,
+            dim=sum(emb_dims),
+            hidden_dim=sum(emb_dims),
             out_dim=out_dim,
             end_w_dropout=False
         )
@@ -205,25 +150,19 @@ class Transformer(nn.Module):
 
             depth_layers = nn.ModuleList([])
 
-            # Number of tokens (i.e. time dimension) halves in each depth level.
+            # Time dimension halves in each depth level.
             dims = [int(d * 0.5) for d in dims]
 
             for k in range(len(dims)):
-                #dims_copy = copy.deepcopy(dims)
-                #dims_copy.pop(k)
-
                 dim = dims[k]
                 mlp_dim = mlp_dims[k]
                 fine_grained_kernel = fine_grained_kernels[k]
                 in_chan = in_chans[k]
 
                 depth_layers.append(nn.ModuleList([
-                    #nn.Linear(dim, inner_dim, bias=False),
                     Attention(q_dim=dim, heads=heads, dim_head=dim_head, dropout=dropout),
                     FeedForward(dim, mlp_dim, dim, dropout=dropout),
                     self.cnn_block(in_chan=in_chan, kernel_size=fine_grained_kernel, dp=dropout),
-                    #nn.Linear(dim, inner_dim, bias=False),
-                    # Version with added bias term for comparability to crossmodal deformer
                     nn.Linear(dim, inner_dim, bias=True),
                     nn.Linear(dim, inner_dim, bias=True),
                     nn.Linear(dim, inner_dim, bias=True),
@@ -238,73 +177,40 @@ class Transformer(nn.Module):
     def forward(self, channels_output):
         dense_feature = []
         for depth_layers in self.layers:
-            # list of fine output of each modality at that specific depth
+            # List of fine output of each modality at that specific depth
             depth_dense_feature = []  
-
-            #depth_output_heads = []
 
             # HCT blocks, one for each modality
             for i, (attn, ff, cnn, q_layer, k_layer, v_layer, _) in enumerate(depth_layers):
                 # Modality specific tensor
                 x = channels_output[i]
-                
-                
-                #print(x.shape)
+
                 x_cg = self.pool(x)
-                #print(x_cg.shape)
-                #x_cg_heads = self_att_head_creator(x_cg)
-
                 x_cg = attn(x_cg, x_cg, x_cg) + x_cg
-
                 x_fg = cnn(x)
-
                 x_info = self.get_info(x_fg)  # (b, in_chan)
                 depth_dense_feature.append(x_info)
-                # TODO think about if this ff can be directly used to get the heads
                 x = ff(x_cg) + x_fg
 
-
-                #x = head_creator(x)
                 x_q = q_layer(x)
                 x_k = k_layer(x)
                 x_v = v_layer(x)
                 
                 channels_output[i] = (x, x_q, x_k, x_v)
 
-                #print(f"x after self loop {x.shape}")
-                #exit()
-
-                
-                #depth_output_heads.append(depth_heads)
-
             dense_feature.append(depth_dense_feature)
 
             new_channels_output = []
             # Cross attentions blocks, one for each modality
             for i, (_, _, _, _, _, _, cross_attn) in enumerate(depth_layers):
-                # Modality specific tensor
+                # Modality specific tensors
                 x, x_q, x_k, x_v = channels_output[i]
-                #x = depth_output_heads[i]
-
-                #k_agg =
-
                 x = cross_attn(
                     x, x_q, [h for n, h in enumerate(channels_output) if n != i]
                 )
-
-
-                #print(x.shape)
-
-                #print("hiii")
-                #exit()
-
                 new_channels_output.append(x)
 
-                #channels_output[i] = x
-
             channels_output = new_channels_output
-
-        #exit()
 
         modality_specific_emb = []
         for i, chan_out in enumerate(channels_output):
@@ -326,7 +232,7 @@ class Transformer(nn.Module):
         return [int(dim * (0.5 ** depth)) * in_chan + in_chan * depth for dim, in_chan in zip(dims, in_chans)]
 
     def get_info(self, x):
-        # x: b, k, l
+        # x: (b, k, l)
         x = torch.log(torch.mean(x.pow(2), dim=-1))
         return x
 
@@ -348,11 +254,9 @@ class Conv2dWithConstraint(nn.Conv2d):
         return super(Conv2dWithConstraint, self).forward(x)
 
 
-class MultiChannelDeformer(nn.Module, BaseBenchmarkModel):
+class MultiChannelDeformer(BaseBenchmarkModel):
     @staticmethod
-    def add_model_options(parser_group, default_out_dim, modality=None):
-        #group = parser.add_argument_group('model')
-
+    def add_model_options(parser_group, out_dim, modality=None):
         # These can vary between modalities
         parser_group.add_argument("--num_time", default=[4 * 128, 6 * 128, 4 * 64, 10 * 32], type=int, nargs="+",
                            help="Number of time steps for the resp modality")
@@ -367,14 +271,13 @@ class MultiChannelDeformer(nn.Module, BaseBenchmarkModel):
         parser_group.add_argument("--emb_dim", default=[256, 16, 16, 16], type=int, nargs="+",
                            help="Embedding dimensions for the modalities")
 
-        # These must match for all modalities
+        # These three must match for all modalities
         parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
         parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
         parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
-        #parser_group.add_argument("--dropout", default=0.5, type=float, help="Dropout rate")
-        # TODO: analyse what rate is better
+
         parser_group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
-        parser_group.add_argument("--out_dim", default=default_out_dim, type=int,
+        parser_group.add_argument("--out_dim", default=out_dim, type=int,
                            help="Size of the output. For classification tasks, this is the number of classes.")
 
     def cnn_block(self, out_chan, kernel_size, num_chan):
@@ -384,9 +287,7 @@ class MultiChannelDeformer(nn.Module, BaseBenchmarkModel):
             Conv2dWithConstraint(out_chan, out_chan, (num_chan, 1),
                                  padding=0, max_norm=2) if num_chan > 1 else nn.Identity(),
             nn.BatchNorm2d(out_chan),
-            nn.ELU(),
-            # the transformer also does pooling in the beginning
-            #nn.MaxPool2d((1, 2), stride=(1, 2))
+            nn.ELU()
         )
 
     def __init__(self, *, num_time, num_chan, mlp_dim, num_kernel, temporal_kernel,
@@ -394,12 +295,9 @@ class MultiChannelDeformer(nn.Module, BaseBenchmarkModel):
         super().__init__()
 
         self.cnn_encoders = nn.ModuleList([])
-        #print(num_chan, num_kernel, temporal_kernel)
         for chan, num_kern, temporal_kern in zip(num_chan, num_kernel, temporal_kernel):
             cnn_encoder = self.cnn_block(out_chan=num_kern, kernel_size=(1, temporal_kern), num_chan=chan)
             self.cnn_encoders.append(cnn_encoder)
-
-        #dims = [int(0.5 * d) for d in dims]  # embedding size after the first cnn encoders
 
         self.to_patch_embedding = Rearrange('b k c f -> b k (c f)')
 
@@ -430,9 +328,6 @@ class MultiChannelDeformer(nn.Module, BaseBenchmarkModel):
 
     def get_padding(self, kernel):
         return (0, int(0.5 * (kernel - 1)))
-
-    '''def get_hidden_size(self, input_size, num_layer):
-        return [int(input_size * (0.5 ** i)) for i in range(num_layer + 1)]'''
 
 
 def count_parameters(model):
@@ -471,11 +366,4 @@ if __name__ == "__main__":
 
     print(output)
     print(output.shape)
-
-    #tensor1 = torch.randn(1, 16, 4, 16)
-    #tensor2 = torch.randn(1, 16, 16, 64)
-    #result = torch.matmul(tensor1, tensor2).size()
-
-    #print("hi")
-    #print(result)
-    #print(count_parameters(dummy_model))
+    
