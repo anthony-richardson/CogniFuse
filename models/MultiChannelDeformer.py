@@ -355,7 +355,8 @@ if __name__ == "__main__":
     dummy_resp = torch.randn(1, 1, 10 * 32)
     channels = [
         dummy_eeg,
-        dummy_ppg, dummy_eda,
+        dummy_ppg, 
+        dummy_eda,
         dummy_resp
     ]
 
