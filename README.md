@@ -31,7 +31,7 @@ The [run_benchmark.py](train/train_cross_validation.py) script allows users to r
 - `modality`: In the case of an unimodal model, this decides which modality to use. The options are `eeg`, `ppg`, `eda` and `resp`
 - `task`: The task on which the model should be trained and evaluated. The available tasks can be found [here](utils/tasks.py) or in the script help menu 
 - `cuda`: The choice between `1` for using a cuda device and `0` for using the cpu
-- `device`: The device id to use. When using Nvidia grpahics cards, the available devices may be viewed using `nvidia-smi`
+- `device`: The id of the cuda device. When using Nvidia grpahics cards, the available devices may be viewed using `nvidia-smi`
 - All arguments that have been added by the user when overwriting the `add_model_options` function of the custom model class
 
 More details and a list of all available options for the specific model are provided when adding `--help` or `-h` to the end of the script execution. After executing the [run_benchmark.py](train/train_cross_validation.py) script, the results will be stored in the [save](save) directory. This includes the model configuration, all model checkpoints as well as the validation and test scores of a 10-fold-cross-validation.
