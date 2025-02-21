@@ -232,11 +232,11 @@ def train_args(cross_validate=False):
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
 
     if is_multimodal():
-        default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
+        default_save_dir = os.path.join(os.getcwd(), 'save', 
         				'multimodal', model_name, timestamp)
     else:
         modality = dummy_args.modality
-        default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
+        default_save_dir = os.path.join(os.getcwd(), 'save', 
         				'unimodal', model_name, modality, timestamp)
     add_save_dir_path(parser, default_save_dir=default_save_dir)
     return parser.parse_args()
@@ -254,7 +254,7 @@ def late_fusion_evaluation_args():
                         required=True, help="Save directories of the individual modalities.")
 
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
-    default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
+    default_save_dir = os.path.join(os.getcwd(), 'save', 
         			    'multimodal', 'LateFusionDeformer', timestamp)
     add_save_dir_path(parser, default_save_dir=default_save_dir)
     return parser.parse_args()
