@@ -9,7 +9,8 @@ class MultimodalDummy(BaseBenchmarkModel):
     @staticmethod
     def add_model_options(parser_group, out_dim, modality=None):
         """
-        Defining the arguments of the model. 
+        Defining the arguments of the model. All of these arguments are 
+        automatically passed to the models init function.
 
         Parameters
         ----------
