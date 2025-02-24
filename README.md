@@ -15,7 +15,7 @@ Therefore, we provide the first public dataset and benchmarking system for multi
 
 ## Getting started 
 
-The dataset needed to run the benchmark can be accessed [here](). A detailed description of the data can be found in our [paper](). The dataset contains 119.435 samples from 134 participants. Each sample is a collection of simultaneously starting chunks of electroencephalogram (eeg), photoplethysmography (ppg), electrodermal activity (eda) and respiration (resp) data.  
+The dataset needed to run the benchmark can be accessed [here](). A detailed description of the data is provided in our [paper](). The dataset contains 119.435 samples from 134 participants. Each sample is a collection of simultaneously starting chunks of electroencephalogram (eeg), photoplethysmography (ppg), electrodermal activity (eda) and respiration (resp) data.  
 
 Before using the benchmarking system, we recommend seeting up and activating a new conda environment prior to installation. A guide for doing so can be found [here](). To install the required dependencies for this code base, run:
 
