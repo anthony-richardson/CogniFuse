@@ -1,15 +1,23 @@
-# CogniFuse
+## CogniFuse
 
-short introduction to the benchmarkl 
+This is the official code base of the paper [CogniFuse and Multimodal Deformers: A Unified Approach for Benchmarking and Modeling Biosignal Fusion](). Please cite it when using this code or benchmark in orignal or modified form. 
+```
+TODO
+```
 
-reprodcuboiliy .. etc. multimodal; biosioginal fusion etc. accerlate reserch etc. 
+Continuously monitored physiological signals, often referred to as biosignals, carry rich information about the human body and the biological processes happening within. Extracting this information from casually collected data in activities of daily living holds great potential to revolutionize real-time monitoring of physical and mental states outside of highly controlled clinical conditions. However, this potential comes with a number of difficulties: 
+- Data recorded during activities of daily living contains an increased amount of noise and artifacts, making the extraction of relevant aspects more difficult
+- The importance of each biosignal, and thus the impact it should have on the prediction, can vary between tasks
+- The relevant aspects in the data can differ between tasks
+- These difficulties scale with the number of tasks and modalities
 
-also show table of current test results. 
+Therefore, we provide the first public dataset and benchmarking system for multi-task multimodoal biosignal fusion during activities of daily living. To accelerate future research on biosinal fusion, this benchmarking system was developed with careful attention to comparability, robustness, reproducibility and accessibility. In particular, the process of adding custom models in a comparible and reproducible way is highly simplified and does not require any modifications of the underlying code base.
 
-## Setup
-requirements txt 
+## Getting started 
 
-data descriptin and download and number of samples . 
+data descriptin and download and number of samples .
+ 
+requirements txt
 
 ## Adding custom models
 To add a custom model to the benchmark, three steps are required:
