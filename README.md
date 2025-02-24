@@ -17,7 +17,7 @@ Therefore, we provide the first public dataset and benchmarking system for multi
 
 data descriptin and download and number of samples .
  
-It is recomended to set up a new [conda]() environment. To install the nequired dependencies, run:
+It is recomended to set up and activate a new [conda]() environment prior to installation. To install the nequired dependencies, run:
 
 ```
 pip install -r requirements.txt
