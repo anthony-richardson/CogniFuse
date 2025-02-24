@@ -17,7 +17,11 @@ Therefore, we provide the first public dataset and benchmarking system for multi
 
 data descriptin and download and number of samples .
  
-requirements txt
+To install the nequired dependencies, run:
+
+```
+pip install -r requirements.txt
+```
 
 ## Adding custom models
 To add a custom model to the benchmark, three steps are required:
