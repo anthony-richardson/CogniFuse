@@ -1,4 +1,4 @@
-## CogniFuse
+# CogniFuse
 
 This is the official code base of the paper [CogniFuse and Multimodal Deformers: A Unified Approach for Benchmarking and Modeling Biosignal Fusion](). Please cite it when using this code or benchmark in orignal or modified form. 
 ```
@@ -9,15 +9,15 @@ Continuously monitored physiological signals, often referred to as biosignals, c
 - Data recorded during activities of daily living contains an increased amount of noise and artifacts, making the extraction of relevant aspects more difficult
 - The importance of each biosignal, and thus the impact it should have on the prediction, can vary between tasks
 - The relevant aspects in the data can differ between tasks
-- These difficulties scale with the number of tasks and modalities
+- Difficulty scales with the number of tasks and modalities
 
 Therefore, we provide the first public dataset and benchmarking system for multi-task multimodoal biosignal fusion during activities of daily living. To accelerate future research on biosinal fusion, this benchmarking system was developed with careful attention to comparability, robustness, reproducibility and accessibility. In particular, the process of adding custom models in a comparible and reproducible way is highly simplified and does not require any modifications of the underlying code base.
 
 ## Getting started 
 
-data descriptin and download and number of samples .
- 
-It is recomended to set up and activate a new [conda]() environment prior to installation. To install the nequired dependencies, run:
+The dataset needed to run the benchmark can be accessed [here](). A detailed description of the data can be found in our [paper](). The dataset contains 119.435 samples from 134 participants. Each sample is a collection of simultaneously starting chunks of electroencephalogram (eeg), photoplethysmography (ppg), electrodermal activity (eda) and respiration (resp) data.  
+
+Before using the benchmarking system, we recommend seeting up and activating a new conda environment prior to installation. A guide for doing so can be found [here](). To install the required dependencies for this code base, run:
 
 ```
 pip install -r requirements.txt
@@ -50,10 +50,13 @@ More details and a list of all available options for the specific model are prov
 
 #### Examples
 If for intance, a user adds a custom multimodal model called `MyMultimodalModel`, it can be run on the `SwitchBackAuditivePresence` task by executing the following command:
+
 ```bash
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.run_benchmark --model_name MyMultimodalModel --multimodal 1 --task SwitchBackAuditivePresence --cuda 1 --device 0
 ```
+
 If, on the other hand, a user adds a custom unimodal model for EEG data called `MyUnimodalModel`, it can be run on the `SwitchBackAuditivePresence` task by executing the following command:
+
 ```bash
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.run_benchmark --model_name MyUnimodalModel --multimodal 0 --modality eeg --task SwitchBackAuditivePresence --cuda 1 --device 0
 ```
