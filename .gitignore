@@ -1,8 +1,7 @@
 # Save
 save/*
 
-# Excluding the preprocessing as it contains 
-# information about the anonymization procedure. 
+# Excluding the preprocessing
 preprocessing/*
 
 # Data
