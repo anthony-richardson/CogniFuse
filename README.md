@@ -11,7 +11,7 @@ Continuously monitored physiological signals, often referred to as biosignals, c
 - The relevant aspects in the data can differ between tasks
 - Difficulty scales with the number of tasks and modalities
 
-Therefore, we provide a public dataset and benchmarking system for multi-task multimodoal biosignal fusion during activities of daily living. To accelerate future research on biosinal fusion, this benchmarking system was developed with careful attention to comparability, robustness, reproducibility and accessibility. In particular, the process of adding custom models in a comparible and reproducible way is highly simplified and does not require any modifications of the underlying code base.
+Therefore, we provide a public dataset and benchmarking system for multi-task multimodal biosignal fusion during activities of daily living. To accelerate future research on biosinal fusion, this benchmarking system was developed with careful attention to comparability, robustness, reproducibility and accessibility. In particular, the process of adding custom models in a comparible and reproducible way is highly simplified and does not require any modifications of the underlying code base.
 
 ## Getting started 
 
