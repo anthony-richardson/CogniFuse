@@ -119,12 +119,7 @@ class Conv2dWithConstraint(nn.Conv2d):
 
 class IntermediateFusionDeformer(BaseBenchmarkModel):
     @staticmethod
-    def add_model_options(parser_group, out_dim, modality=None):
-        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 128, 4 * 64, 10 * 32], type=int, nargs="+",
-                           help="Number of time steps for the resp modality")
-        parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
-                           help="Number of channels for the modalities")
-
+    def add_model_options(parser_group):
         parser_group.add_argument("--mlp_dim", default=[16, 16, 16, 16], type=int, nargs="+",
                            help="Dimensions of MLPs for the modalities")
         parser_group.add_argument("--num_kernel", default=[64, 4, 4, 4], type=int, nargs="+",
@@ -132,14 +127,11 @@ class IntermediateFusionDeformer(BaseBenchmarkModel):
         parser_group.add_argument("--temporal_kernel", default=[13, 13, 13, 13], type=int, nargs="+",
                            help="Lengths of temporal kernels for the modalities")
         parser_group.add_argument("--emb_dim", default=256, type=int, help="Embedding dimension")
-
         parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
         parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
         parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
         parser_group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
-        parser_group.add_argument("--out_dim", default=out_dim, type=int,
-                           help="Size of the output. For classification tasks, this is the number of classes.")
-
+        
     def cnn_block(self, out_chan, kernel_size, num_chan):
         return nn.Sequential(
             Conv2dWithConstraint(1, out_chan, kernel_size, padding=self.get_padding(kernel_size[-1]), max_norm=2),

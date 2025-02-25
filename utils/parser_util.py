@@ -4,12 +4,11 @@ import os
 import json
 import inspect
 import datetime
+import importlib
 
 import utils.tasks as tasks
-from utils.model_util import get_model_cls
 
 
-# TODO: is this being used or is it replaced by create_model in model_util?
 def parse_and_load_from_model(parser, model_path):
     if model_path is None:
         model_path = get_model_path_from_args()
@@ -32,13 +31,14 @@ def parse_and_load_from_model(parser, model_path):
 
     parser_group = parser.add_argument_group('model')
 
-    out_dim = model_args['out_dim']
+    #out_dim = model_args['out_dim']
     model_name = model_args['model_name']
-    get_model_cls(model_name).add_model_options(
-        parser_group=parser_group,
-        default_out_dim=out_dim,
-        modality=None if model_args['multimodal'] else model_args['modality']
-    )
+
+
+    if model_args['multimodal']:
+        get_model_cls(model_name).add_model_options(parser_group)
+    else:
+        get_model_cls(model_name).add_model_options(parser_group, model_args['modality'])
 
     args, _ = parser.parse_known_args()
 
@@ -56,6 +56,47 @@ def parse_and_load_from_model(parser, model_path):
             print('Warning: was not able to load [{}], '
                   'using default value [{}] instead.'.format(a, args.__dict__[a]))
     return args
+
+
+def get_model_cls(model_name):
+    try:
+        mod = importlib.import_module('models.' + model_name)
+    except ModuleNotFoundError:
+        raise ValueError(f'There is no equally named file in models.{model_name}')
+
+    try:
+        model_cls = getattr(mod, model_name)
+    except ModuleNotFoundError:
+        raise ValueError(f'There is no equally named model class in the model file.{model_name}')
+    return model_cls
+
+
+def get_model_arguments(args, model_cls):
+    out_dim = args.out_dim,
+    modality = None if args.multimodal else args.modality
+
+    # We intentionally do not parse this parser so that the user is not required
+    # to pass the arguments in the command line in cases where that is not needed.
+    dummy_parser = ArgumentParser()
+    dummy_parser_group = dummy_parser.add_argument_group('model')
+    add_base_model_options(dummy_parser_group, out_dim, modality)
+    
+    if is_multimodal():
+        model_cls.add_model_options(dummy_parser_group)
+    else:
+        model_cls.add_model_options(dummy_parser_group, modality)
+
+    for group in dummy_parser._action_groups:
+        if group.title == 'model':
+            group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+            arg_names = list(argparse.Namespace(**group_dict).__dict__.keys())
+
+            model_arguments = {}
+            for arg_name in arg_names:
+                model_arguments[arg_name] = getattr(args, arg_name)
+
+            return model_arguments
+    return ValueError('Model group not found.')
 
 
 def get_args_per_group_name(parser, args, group_name):
@@ -199,6 +240,38 @@ def add_task_option(parser):
                        default=task_choices[0], type=str, help="Different tasks.")
 
 
+def add_base_model_options(parser_group, out_dim, modality):
+    if is_multimodal():
+        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 128, 4 * 64, 10 * 32],
+                          type=int, nargs="+", help="Number of time steps for each modality")
+        parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
+                          help="Number of channels for each modality")
+        parser_group.add_argument("--out_dim", default=out_dim, type=int,
+                                  help="Size of the output.")
+    else:
+        if modality is None:
+            raise ValueError('Modality not specified')
+
+        if modality == "eeg":
+            num_chan = 16
+            num_time = 4 * 128
+        else:
+            num_chan = 1
+            if modality == "ppg":
+                num_time = 6 * 128
+            elif modality == "eda":
+                num_time = 4 * 64
+            elif modality == "resp":
+                num_time = 10 * 32
+            else:
+                raise ValueError(f"Unknown modality: {modality}")
+
+        parser_group.add_argument("--num_time", default=num_time, type=int, help="Number of time steps")
+        parser_group.add_argument("--num_chan", default=num_chan, type=int, help="Number of channels")
+        parser_group.add_argument("--out_dim", default=out_dim, type=int,
+                                  help="Size of the output.")
+
+
 def train_args(cross_validate=False):
     parser = ArgumentParser()
     add_base_options(parser)
@@ -219,15 +292,21 @@ def train_args(cross_validate=False):
     dummy_args, _ = dummy_parser.parse_known_args()
     model_name = dummy_args.model_name
 
-    default_out_dim = get_output_size_from_task()
+    out_dim = get_output_size_from_task()
+    modality = None if is_multimodal() else dummy_args.modality
 
     parser_group = parser.add_argument_group('model')
-
-    get_model_cls(model_name).add_model_options(
-        parser_group=parser_group,
-        default_out_dim=default_out_dim,
-        modality=None if is_multimodal() else dummy_args.modality
+    
+    add_base_model_options(
+        parser_group=parser_group, 
+        out_dim=out_dim, 
+        modality=modality
     )
+
+    if is_multimodal():
+        get_model_cls(model_name).add_model_options(parser_group)
+    else:
+        get_model_cls(model_name).add_model_options(parser_group, modality)
 
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
 

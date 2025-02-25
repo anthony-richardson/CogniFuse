@@ -7,7 +7,7 @@ from utils.model_util import BaseBenchmarkModel
 
 class MultimodalDummy(BaseBenchmarkModel):
     @staticmethod
-    def add_model_options(parser_group, out_dim, modality=None):
+    def add_model_options(parser_group):
         """
         Defining the arguments of the model. All of these arguments are 
         automatically passed to the models init function.
@@ -16,21 +16,9 @@ class MultimodalDummy(BaseBenchmarkModel):
         ----------
         parser_group : argparse._ArgumentGroup
             The parser group to which model arguments must be added
-        out_dim : int
-            The number of classes. This is automatically set by the task choice 
-        modality : str, optional
-            The input modality. In multimodal settings this should not be used and is always None.
         """
 
-        # Required model arguments
-        parser_group.add_argument("--num_time", default=[4 * 128, 6 * 128, 4 * 64, 10 * 32],
-                          type=int, nargs="+", help="Number of time steps for each modality")
-        parser_group.add_argument("--num_chan", default=[16, 1, 1, 1], type=int, nargs="+",
-                          help="Number of channels for each modality")
-        parser_group.add_argument("--out_dim", default=out_dim, type=int,
-                                  help="Size of the output.")
-
-        # Custom model arguments.
+        # Exemplary model arguments.
         parser_group.add_argument("--predicted_class", default=0, type=int,
                                   help="The index of the class this model naively predicts.")
 
@@ -38,15 +26,17 @@ class MultimodalDummy(BaseBenchmarkModel):
         """
         All model arguments in the add_model_options function are 
         automatically passed as parameters to this init function. 
+        The arguments marked with (*) are predefined and automatically 
+        provided by the benchmarking system.
 
         Parameters
         ----------
         num_time : list
-            Number of time steps for each modality
+            Number of time steps for each modality (*)
         num_chan : list
-            Number of channels for each modality
+            Number of channels for each modality (*)
         out_dim : int
-            The number of classes. This is automatically set by the task choice 
+            The number of classes. This is automatically set by the task choice (*)
         predicted_class : int
             An exemplary custom model argument that decides which class to predict
         """
@@ -72,6 +62,11 @@ class MultimodalDummy(BaseBenchmarkModel):
 
 
 if __name__ == "__main__":
+    """
+    This function is not required by the benchmarking system. When designing a 
+    custom model it merely provides a way to check if data can be passed through. 
+    """
+    
     dummy_model = MultimodalDummy(
         num_time=[4 * 128, 6 * 128, 4 * 64, 10 * 32],
         num_chan=[16, 1, 1, 1],

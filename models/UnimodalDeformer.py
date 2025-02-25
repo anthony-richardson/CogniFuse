@@ -122,30 +122,14 @@ class Conv2dWithConstraint(nn.Conv2d):
 
 class UnimodalDeformer(BaseBenchmarkModel):
     @staticmethod
-    def add_model_options(parser_group, out_dim, modality=None):
-        if modality is None:
-            raise ValueError('Modality not specified')
-
+    def add_model_options(parser_group, modality):
         if modality == "eeg":
-            num_chan = 16
             num_kernel = 64
-            num_time = 4 * 128
             emb_dim = 256
         else:
-            num_chan = 1
             num_kernel = 4
             emb_dim = 16
-            if modality == "ppg":
-                num_time = 6 * 128
-            elif modality == "eda":
-                num_time = 4 * 64
-            elif modality == "resp":
-                num_time = 10 * 32
-            else:
-                raise ValueError(f"Unknown modality: {modality}")
 
-        parser_group.add_argument("--num_chan", default=num_chan, type=int, help="Number of channels")
-        parser_group.add_argument("--num_time", default=num_time, type=int, help="Number of time steps")
         parser_group.add_argument("--num_kernel", default=num_kernel, type=int, help="Number of kernels")
         parser_group.add_argument("--temporal_kernel", default=13, type=int, help="Length of temporal kernels")
         parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
@@ -154,9 +138,7 @@ class UnimodalDeformer(BaseBenchmarkModel):
         parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
         parser_group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
         parser_group.add_argument("--emb_dim", default=emb_dim, type=int, help="Embedding dimension")
-        parser_group.add_argument("--out_dim", default=out_dim, type=int,
-                                  help="Size of the output. For classification tasks, this is the number of classes.")
-
+        
     def cnn_block(self, out_chan, kernel_size, num_chan):
         return nn.Sequential(
             Conv2dWithConstraint(1, out_chan, kernel_size, padding=self.get_padding(kernel_size[-1]), max_norm=2),
