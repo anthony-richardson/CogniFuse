@@ -56,13 +56,13 @@ The [run_benchmark.py](train/train_cross_validation.py) script allows users to r
 More details and a list of all available options for the specific model are provided when adding `--help` or `-h` to the end of the script execution. After executing the [run_benchmark.py](train/train_cross_validation.py) script, the results will be stored in the [save](save) directory. This includes the model configuration, all model checkpoints as well as the validation and test scores of a 10-fold-cross-validation.
 
 #### Examples
-If for intance, a user adds a custom class for a multimodal model called `MyMultimodalModel` inside a script called `MyScript.py`, the model can be run on the `SwitchBackAuditivePresence` task by executing the following command:
+If for intance, a user adds a custom class for a multimodal model called `MyMultimodalModel` inside a script called `MyScript.py`, the model can be run on the `SwitchBackAuditivePresence` task by executing:
 
 ```bash
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.run_benchmark --model_name MyScript.MyMultimodalModel --multimodal 1 --task SwitchBackAuditivePresence --cuda 1 --device 0
 ```
 
-If, on the other hand, a user adds a custom class for a unimodal model for EEG data called `MyUnimodalModel` inside a script called `MyScript.py`, the model can be run on the `SwitchBackAuditivePresence` task by executing the following command:
+If, on the other hand, a user adds a custom class for a unimodal model for EEG data called `MyUnimodalModel` inside a script called `MyScript.py`, the model can be run on the `SwitchBackAuditivePresence` task by executing:
 
 ```bash
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.run_benchmark --model_name MyScript.MyUnimodalModel --multimodal 0 --modality eeg --task SwitchBackAuditivePresence --cuda 1 --device 0
