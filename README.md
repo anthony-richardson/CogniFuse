@@ -17,7 +17,7 @@ Therefore, we provide a public dataset and benchmarking system for multi-task mu
 
 The dataset needed to run the benchmark can be accessed [here](). A detailed description of the data is provided in our [paper](). The dataset contains 119.435 samples from 134 participants. Each sample is a collection of simultaneously starting chunks of electroencephalogram (`eeg`), photoplethysmography (`ppg`), electrodermal activity (`eda`) and respiration (`resp`) data.  
 
-Before using the benchmarking system, we recommend seeting up and activating a new conda environment with python 3.12.4. This python version was used for develeopment and testing. A guide for setting up conda environments with specific python versions can be found [here](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html). To install the remaining dependencies for this code base, run:
+Before using the benchmarking system, we recommend seeting up and activating a new conda environment with python 3.12.4. This python version was used for development and testing. A guide for setting up conda environments with specific python versions can be found [here](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html). To install the remaining dependencies for this code base, run:
 
 ```
 pip install -r requirements.txt
