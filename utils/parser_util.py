@@ -7,6 +7,7 @@ import datetime
 import importlib
 
 import utils.tasks as tasks
+from models.BaseBenchmarkModel import BaseBenchmarkModel
 
 
 def parse_and_load_from_model(parser, model_path):
@@ -59,15 +60,20 @@ def parse_and_load_from_model(parser, model_path):
 
 
 def get_model_cls(model_name):
+    parts = model_name.rsplit('.', 1)
+    module_n = parts[0]
+    model_n = parts[1]
+    
     try:
-        mod = importlib.import_module('models.' + model_name)
+        mod = importlib.import_module('models.' + module_n)
     except ModuleNotFoundError:
-        raise ValueError(f'There is no equally named file in models.{model_name}')
+        raise ValueError(f'There is no module named models.{module_n}')
 
     try:
-        model_cls = getattr(mod, model_name)
+        model_cls = getattr(mod, model_n)
     except ModuleNotFoundError:
-        raise ValueError(f'There is no equally named model class in the model file.{model_name}')
+        raise ValueError(f'There is no class named {model_n} in models.{module_n}')
+
     return model_cls
 
 
@@ -140,11 +146,26 @@ def add_base_options(parser):
 def add_model_name_option(parser):
     group = parser.add_argument_group('model_name')
     model_dir = os.path.join(os.getcwd(), 'models')
-    model_name_options = [name.split('.')[0] for name in os.listdir(model_dir)
-                          if os.path.isfile(os.path.join(model_dir, name))
-                          and name.endswith('.py')]
-    if len(model_name_options) == 0:
-        raise Exception('No model name options found.')
+
+    model_name_options = []
+    for dirpath, _, filenames in os.walk(model_dir):
+        for filename in filenames:
+            if filename.endswith(".py"):
+                module_path = filename.split('.')[0]
+                rel_path = os.path.relpath(dirpath, model_dir)
+                rel_path = rel_path.replace("/", ".")
+                if rel_path != ".":
+                    module_path = rel_path + "." + module_path
+
+                if "dummies" not in module_path and filename != "BaseBenchmarkModel.py":
+                    # Searching for BaseBenchmarkModel subclasses in the file.
+                    mod = importlib.import_module('models.' + module_path)
+                    for _, obj in inspect.getmembers(mod):
+                        if inspect.isclass(obj) and issubclass(obj, BaseBenchmarkModel):
+                            model_path = module_path + "." + obj.__name__
+                            if model_path not in model_name_options \
+                                    and obj.__name__ != "BaseBenchmarkModel":
+                                model_name_options.append(model_path)
 
     group.add_argument("--model_name", type=str, help="The file name containing the equally named model class.",
                        choices=model_name_options, default=model_name_options[-1])

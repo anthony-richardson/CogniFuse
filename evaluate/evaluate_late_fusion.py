@@ -2,8 +2,6 @@
 # Note that script this also supports using different models for the different 
 # modalities as well as fusing multiple models that use the same modality. 
 
-# TODO: integrate into cross validation script at the end with test data as param (in case late fusion)
-
 # TODO: parameterize with the f1 score variant instead of hardcoding micro f1-score
 
 import os

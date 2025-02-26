@@ -2,7 +2,7 @@
 
 import torch
 
-from utils.model_util import BaseBenchmarkModel
+from models.BaseBenchmarkModel import BaseBenchmarkModel
 
 
 class MultimodalDummy(BaseBenchmarkModel):
