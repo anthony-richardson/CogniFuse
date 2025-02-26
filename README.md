@@ -33,7 +33,7 @@ pip install -r requirements.txt
 ## Adding custom models
 To produce benchmark scores for a custom model, three steps are required:
 - Creating a pytorch model class that inherits from [BaseBenchmarkModel](utils/model_util.py)
-- Placing the created model inside the [models](models) folder
+- Placing the created model anywehere inside the [models](models) folder
 - Running the model on a benchmark task by executing [run_benchmark.py](train/train_cross_validation.py) 
 
 All other aspects, including parameter loading, optimizer setup, data loading, as well as model training and evaluation, are done automatically, reproducibly and in compliance with the already existing benchmark results.
