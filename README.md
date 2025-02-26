@@ -68,7 +68,7 @@ If, on the other hand, a user adds a custom unimodal model for EEG data called `
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.run_benchmark --model_name MyUnimodalModel --multimodal 0 --modality eeg --task SwitchBackAuditivePresence --cuda 1 --device 0
 ```
 
-## Reproducability
+## Reproducibility
 The benchmarking system is configured to assure full reproducability, by replacing all non-deterministic algorithms, such as dropout during training, with deterministic alternatives. An exact guide for reprocuding the benchmark results from our [paper]() can be found [here](save/README.md). 
 
 ## License
