@@ -53,7 +53,7 @@ The [run_benchmark.py](run_benchmark.py) script allows users to run any model, w
 - `device`: The device id, in the case of using a cuda device. For Nvidia graphics cards, this id may be viewed using `nvidia-smi`
 - All arguments that have been added by the user when overwriting the `add_model_options` function of the custom model class
 
-More details and a list of all available options for the specific model are provided when adding `--help` or `-h` to the end of the script execution. After executing the [run_benchmark.py](train/train_cross_validation.py) script, the results will be stored in the [save](save) directory. This includes the model configuration, all model checkpoints as well as the validation and test scores of a 10-fold-cross-validation.
+More details and a list of all available options for the specific model are provided when adding `--help` or `-h` to the end of the script execution. After executing the [run_benchmark.py](run_benchmark.py) script, the results will be stored in the [save](save) directory. This includes the model configuration, all model checkpoints as well as the validation and test scores of a 10-fold-cross-validation.
 
 #### Examples
 If for intance, a user adds a custom class for a multimodal model called `MyMultimodalModel` inside a script called `MyScript.py`, the model can be run on the `SwitchBackAuditivePresence` task by executing:
