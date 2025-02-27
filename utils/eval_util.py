@@ -117,7 +117,7 @@ def get_y_targets(data_loader, task_tools):
 def run_model_on_eval(model, data_loader, device, modality=None):
     predictions = []
     with torch.no_grad():
-        for modality_data, meta_info in data_loader:
+        for modality_data, _ in data_loader:
             if modality is None:
                 x = [modality_data[modality_name].type(torch.float).to(device) for
                         modality_name in ['eeg', 'ppg', 'eda', 'resp']]

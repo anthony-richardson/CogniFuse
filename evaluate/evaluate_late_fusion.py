@@ -2,8 +2,6 @@
 # Note that script this also supports using different models for the different 
 # modalities as well as fusing multiple models that use the same modality. 
 
-# TODO: parameterize with the f1 score variant instead of hardcoding micro f1-score
-
 import os
 import json
 import torch
@@ -27,6 +25,8 @@ def combine_unimodal_args(args):
     combined_args = {}
     parameter_sum = 0
 
+    f1_score_variant_list = []
+
     for mod_save_dir in modality_save_dirs:
         unimodal_args_path = os.path.join(os.getcwd(), mod_save_dir, 'args.json')
 
@@ -43,15 +43,20 @@ def combine_unimodal_args(args):
         for key in unimodal_args.keys():
             combined_args[modality][key] = unimodal_args[key]
 
+        f1_score_variant_list.append(unimodal_args['f1_score_variant'])
+
     combined_args['late_fusion'] = {}
     combined_args['late_fusion']['nr_of_parameters'] = parameter_sum
 
     assert len(set(task_list)) == 1, 'The tasks solved by the modalities are not matching!'
     task = task_list[0]
 
+    assert len(set(f1_score_variant_list)) == 1, 'The f1-score variants of the modalities are not matching!'
+    f1_score_variant = f1_score_variant_list[0]
+
     assert len(set(dir_to_modality.values())) == len(dir_to_modality.values()), 'The same modality is used more than once!'
 
-    return combined_args, dir_to_modality, task
+    return combined_args, dir_to_modality, task, f1_score_variant
 
 
 def combine_unimodal_cross_validation_logs(args, dir_to_modality):
@@ -116,9 +121,8 @@ def calc_modality_weights(fold, modalities, combined_logs):
     return weights
 
 
-def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities):
+def run_late_fusion(args, combined_logs, combined_args, folds, task, f1_score_variant, modalities):
     task_tools = getattr(tasks, task)
-    nr_classes = combined_args[list(modalities)[0]]['out_dim']
 
     if args.split == 'validation':
         evaluation_data = {}
@@ -186,22 +190,15 @@ def run_late_fusion(args, combined_logs, combined_args, folds, task, modalities)
 
         predicted_labels = torch.argmax(fused_predictions, dim=-1)
         accuracy = accuracy_score(y_targets.cpu().detach().numpy(), predicted_labels.cpu().detach().numpy())
-
-        # Normal f1 score like in https://dl.acm.org/doi/pdf/10.1145/2070481.2070516
-        #avg = 'binary'
-        #if nr_classes > 2:
-        #    # Unweighted average for all classes
-        #    avg = 'macro'
             
-        avg = 'micro'
+        #avg = 'micro'
 
         f1 = f1_score(
             y_targets.cpu().detach().numpy(),
             predicted_labels.cpu().detach().numpy(),
             # When all predictions and labels are negative
             zero_division=1.0,
-            # Unweighted average for all classes
-            average=avg
+            average=f1_score_variant
         )
 
         accuracies_for_best_scores.append(accuracy)
@@ -226,10 +223,10 @@ def main():
     args = late_fusion_evaluation_args()
     fixseed(args.seed)
 
-    combined_args, dir_to_modality, task = combine_unimodal_args(args)
+    combined_args, dir_to_modality, task, f1_score_variant = combine_unimodal_args(args)
     
     combined_logs, folds = combine_unimodal_cross_validation_logs(args, dir_to_modality)
-    run_late_fusion(args, combined_logs, combined_args, folds, task, dir_to_modality.values())
+    run_late_fusion(args, combined_logs, combined_args, folds, task, f1_score_variant, dir_to_modality.values())
 
     args_dict = dict(vars(args))
     for key in args_dict:

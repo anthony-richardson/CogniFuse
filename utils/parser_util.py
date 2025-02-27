@@ -32,9 +32,11 @@ def parse_and_load_from_model(parser, model_path):
 
     parser_group = parser.add_argument_group('model')
 
-    #out_dim = model_args['out_dim']
-    model_name = model_args['model_name']
+    out_dim = model_args['out_dim']
+    modality = None if model_args['multimodal'] else model_args['modality']
+    add_base_model_options(parser_group, out_dim, modality)
 
+    model_name = model_args['model_name']
 
     if model_args['multimodal']:
         get_model_cls(model_name).add_model_options(parser_group)
@@ -78,7 +80,7 @@ def get_model_cls(model_name):
 
 
 def get_model_arguments(args, model_cls):
-    out_dim = args.out_dim,
+    out_dim = args.out_dim
     modality = None if args.multimodal else args.modality
 
     # We intentionally do not parse this parser so that the user is not required
@@ -210,16 +212,14 @@ def add_training_options(parser):
 
 
 
-def add_save_dir_path(parser, default_save_dir):
+def add_save_dir_path(parser, default_save_dir=None):
     group = parser.add_argument_group('save_directory')
-    group.add_argument("--save_dir", default=default_save_dir,
-                    type=str, help="Directory for saving checkpoints or results.")
-
-
-def add_base_dir_path(parser):
-    group = parser.add_argument_group('base_directory')
-    group.add_argument("--base_dir", required=True, 
-                    type=str, help="Base diretory of the stored models for each fold.")
+    if default_save_dir is None:
+        group.add_argument("--save_dir", required=True, 
+                        type=str, help="Directory for saving checkpoints or results.")
+    else:
+        group.add_argument("--save_dir", default=default_save_dir,
+                        type=str, help="Directory for saving checkpoints or results.")
 
 
 def add_seed(parser):
@@ -349,7 +349,6 @@ def late_fusion_evaluation_args():
     add_evaluation_options(parser)
     add_seed(parser)
 
-    # TODO: Rename to modality_base_dirs
     parser.add_argument("--modality_save_dirs", type=str, nargs="+",
                         required=True, help="Save directories of the individual modalities.")
 
@@ -366,15 +365,12 @@ def evaluation_args():
     add_data_options(parser, cross_validate=True)
     add_evaluation_options(parser)
     add_seed(parser)
-    add_base_dir_path(parser)
+    add_save_dir_path(parser)
 
-    dummy_parser = ArgumentParser(add_help=False)
-    add_base_dir_path(dummy_parser)
-    dummy_args, _ = dummy_parser.parse_known_args()
-    base_dir = dummy_args.base_dir
-    
-    add_save_dir_path(parser, default_save_dir=base_dir)
-    return parser.parse_args()
+    # Allowing unknown args so that the args from the training 
+    # script can be passed through conveniently.
+    args, _ = parser.parse_known_args()
+    return args
 
 
 def is_multimodal():

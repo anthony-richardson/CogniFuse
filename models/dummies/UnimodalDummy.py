@@ -1,7 +1,6 @@
 # Dummy of a unimodal model for the benchmark. 
 
 import torch
-#from torch import nn 
 
 from models.BaseBenchmarkModel import BaseBenchmarkModel
 
