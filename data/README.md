@@ -1,2 +1,2 @@
-# Place the data here
+The downloaded `folds` folder, which can be downloaded [here](), must be placed in this directory.
 
