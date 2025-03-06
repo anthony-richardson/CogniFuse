@@ -36,7 +36,7 @@ To produce benchmark scores for a custom model, three steps are required:
 - Placing the created model class anywhere inside the [models](models) folder
 - Running the model on a benchmark task by executing [run_benchmark.py](run_benchmark.py) 
 
-All other aspects, including parameter loading, optimizer setup, data loading, as well as model training and evaluation, are done automatically, reproducibly and in compliance with the already existing benchmark results. By fixing all components except the compared models, performance differences can be attributed to the underlying model architectures.
+All other aspects, including parameter loading, optimizer setup, data loading, as well as model training and evaluation, are done automatically, reproducibly and in compliance with the already existing benchmark results. By fixing all components except the compared models, performance differences can be more clearly attributed to the underlying model architectures.
 
 ### Creating a custom model class
 To become usable for the benchmarking system, each created model must inherit from [BaseBenchmarkModel](models/BaseBenchmarkModel.py). This forces the created model class to overwrite the `add_model_options` function, where it is possible to define custom command line arguments that will be automatically passed to the models `init` function. These arguments may then be used to configure the models architecture. The name of the model can be chosen freely. Once a custom model has been added to the [models](models) folder, the benchmarking system will automatically integrate it and add its name to the list of available models. This also works when using subdirectories or when placing multiple models in one script. 
