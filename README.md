@@ -48,7 +48,7 @@ The [run_benchmark.py](run_benchmark.py) script allows users to run any model, w
 - `model_name`: The class name of the model. This is where a custom model becomes available as option once added to the [models](models) folder
 - `multimodal`: The choice between `1` for multimodal and `0` for unimodal
 - `modality`: In the case of an unimodal model, this decides which modality to use. The options are `eeg`, `ppg`, `eda` and `resp`
-- `task`: The task on which the model should be trained and evaluated. The available tasks can be found [here](utils/tasks.py) or in the script help menu 
+- `task`: The task on which the model should be trained and evaluated. The available tasks can be found [here](utils/tasks.py) or in the scripts help menu 
 - `cuda`: The choice between `1` for using a cuda device and `0` for using the cpu
 - `device`: The device id, in the case of using a cuda device. For Nvidia graphics cards, this id may be viewed using `nvidia-smi`
 - All arguments that have been added by the user when overwriting the `add_model_options` function of the custom model class
