@@ -25,10 +25,34 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_
 
 -----------
 
+multi channel encoder v1:
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name MultiChannelEncoderV1.MultiChannelEncoderV1 --task SwitchingTask3Presence --cuda 1 --device 3
+(Parameters: 5548050)
+
+-----------
+
+multi channel encoder v2:
+
+(Parameters: )
+
+-----------
+
 Scaling procedure: 
 +- 0.1% (4952) Parameters compared to multi channel deformer (4952962 * 0.001 = 4952.962)
 --> lower limit: 4948010, upper limit: 4957914
 Linear scaling factor applied to mlp_dim, dim_head, heads, num_kernel, emb_dim (all hyperparameters that are not fixed, e.g. number of channels, or would drastically change the architecture, e.g. depth or temporal kernel)
+
+-----------
+
+multi channel encoder v1 (scaled):
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name MultiChannelEncoderV1.MultiChannelEncoderV1 --task SwitchingTask3Presence --cuda 1 --device 4 --mlp_dim 14 14 14 14 --dim_head 14 --emb_dim 220 14 14 14
+(Parameters: 4950036)
+
+-----------
+
+multi channel encoder v2 (scaled):
+
+(Parameters: )
 
 -----------
 

@@ -15,27 +15,30 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
             heads=number_of_heads,
             dim_head=dim_head,
             dropout=dropout,
-            create_heads=False,
-            out_dim=input_dimension if out_dim is None else out_dim
+            create_heads=False
+            #out_dim=input_dimension if out_dim is None else out_dim
         )
-        
+
         self.ffwd = FeedForward(
-            dim=input_dimension if out_dim is None else out_dim,
+            dim=input_dimension, #if out_dim is None else out_dim,
             hidden_dim=sum(mlp_dims), 
             out_dim=out_dim if out_dim is not None else input_dimension
         )
 
+        print(input_dimension, out_dim)
 
-    def forward(self, x, x_q, other_channels_output):
+
+    def forward(self, x_q, other_channels_output):
         # Stacking the other channels on the kernel dimension.
         # This allows the use of different numbers of kernels for the modalities.
-        k_other_channels = [k for _, _, k, _ in other_channels_output]
+        k_other_channels = [k for _, k, _ in other_channels_output]
         k_agg = torch.cat(k_other_channels, dim=-2)
 
-        v_other_channels = [v for _, _, _, v in other_channels_output]
+        v_other_channels = [v for _, _, v in other_channels_output]
         v_agg = torch.cat(v_other_channels, dim=-2)
 
-        x = x + self.sa(x_q, k_agg, v_agg)
+        x = x_q + self.sa(x_q, k_agg, v_agg)
+
         x = self.ffwd(x)
         return x
 
@@ -196,7 +199,7 @@ class Transformer(nn.Module):
                 x_k = k_layer(x)
                 x_v = v_layer(x)
                 
-                channels_output[i] = (x, x_q, x_k, x_v)
+                channels_output[i] = (x_q, x_k, x_v)
 
             dense_feature.append(depth_dense_feature)
 
@@ -204,9 +207,9 @@ class Transformer(nn.Module):
             # Cross attentions blocks, one for each modality
             for i, (_, _, _, _, _, _, cross_attn) in enumerate(depth_layers):
                 # Modality specific tensors
-                x, x_q, x_k, x_v = channels_output[i]
+                x_q, x_k, x_v = channels_output[i]
                 x = cross_attn(
-                    x, x_q, [h for n, h in enumerate(channels_output) if n != i]
+                    x_q, [h for n, h in enumerate(channels_output) if n != i]
                 )
                 new_channels_output.append(x)
 
