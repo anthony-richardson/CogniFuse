@@ -1,7 +1,9 @@
 # This is an implementation of the Encoder of the Multi-Channel Transformer from 
 # Camgoz et a. (https://arxiv.org/pdf/2009.00299), repurposed for classifiaction tasks. 
 # Since the authors do not provide any source code, this implementation was done 
-# by closely following the papers description.
+# by closely following the papers description. The produce a prediction from the 
+# encoder output, we concatenate the modality embeddings and pass the result through a 
+# single linear layer. 
 
 import torch
 from torch import nn
