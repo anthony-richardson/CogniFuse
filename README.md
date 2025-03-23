@@ -5,7 +5,7 @@ This is the official code base of the paper [CogniFuse and Multimodal Deformers:
 TODO
 ```
 
-Continuously monitored physiological signals, often referred to as biosignals, carry rich information about the human body and the biological processes happening within. Extracting this information from casually collected data in activities of daily living holds great potential to revolutionize real-time monitoring of physical and mental states outside of highly controlled clinical conditions. However, this potential comes with a number of difficulties: 
+Continuously monitored physiological signals carry rich information about the human body and the biological processes happening within. Extracting this information from casually collected biosignal data in activities of daily living holds great potential to revolutionize real-time monitoring of physical and mental states outside of highly controlled clinical conditions. However, this potential comes with a number of difficulties: 
 - Data recorded during activities of daily living contains an increased amount of noise and artifacts, making the extraction of relevant aspects more difficult
 - The importance of each biosignal and the impact it should have on the prediction can vary between tasks
 - The relevant aspects in the data can differ between tasks
