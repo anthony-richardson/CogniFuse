@@ -27,7 +27,7 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
 
 
     def forward(self, x, x_q, other_channels_output):
-        # Stacking the other channels on the token dimension.
+        # Stacking the other channels.
         k_other_channels = [k for _, _, k, _ in other_channels_output]
         k_agg = torch.cat(k_other_channels, dim=-2)
 
@@ -37,10 +37,6 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
         x = x + self.sa(x_q, k_agg, v_agg)
         x = self.ffwd(x)
         return x
-
-
-def pair(t):
-    return t if isinstance(t, tuple) else (t, t)
 
 
 class FeedForward(nn.Module):
@@ -200,7 +196,7 @@ class Transformer(nn.Module):
             dense_feature.append(depth_dense_feature)
 
             new_channels_output = []
-            # Cross attentions blocks, one for each modality
+            # Cross attention blocks, one for each modality
             for i, (_, _, _, _, _, _, cross_attn) in enumerate(depth_layers):
                 # Modality specific tensors
                 x, x_q, x_k, x_v = channels_output[i]

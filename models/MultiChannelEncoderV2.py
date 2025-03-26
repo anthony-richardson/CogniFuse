@@ -1,5 +1,5 @@
 # This is an implementation of the Encoder of the Multi-Channel Transformer from 
-# Camgoz et a. (https://arxiv.org/pdf/2009.00299), repurposed for classifiaction tasks. 
+# Chang et al. (https://arxiv.org/pdf/2102.03951), repurposed for classifiaction tasks. 
 # Since the authors do not provide any source code, this implementation was done by 
 # closely following the papers description. The produce a prediction from the multiple 
 # encoder outputs (one output for each modality), we concatenate them and pass the result 
@@ -13,8 +13,14 @@ from models.BaseBenchmarkModel import BaseBenchmarkModel
 
 
 class CrossChannelTransformerEncoderLayer(nn.Module):
-    def __init__(self, input_dimension, number_of_heads, dim_head, mlp_dims, dropout, out_dim=None):
+    def __init__(self, input_dimension, dims, number_of_heads, dim_head, mlp_dims, dropout, out_dim=None):
         super(CrossChannelTransformerEncoderLayer, self).__init__()
+
+        self.channel_weights = nn.Parameter(torch.randn(len(dims)))
+
+        self.to_k = nn.Linear(input_dimension, input_dimension, bias=True)
+
+        self.to_v = nn.Linear(input_dimension, input_dimension, bias=True)
         
         self.sa = Attention(
             q_dim=input_dimension,
@@ -24,6 +30,8 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
             create_heads=False,
             out_dim=input_dimension
         )
+
+        self.layer_norm = nn.LayerNorm(input_dimension)
         
         self.ffwd = FeedForward(
             dim=input_dimension,
@@ -32,29 +40,31 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
         )
 
     def forward(self, x_q, other_channels_output):
-        # Stacking the other channels on the kernel dimension.
-        # This allows the use of different numbers of kernels for the modalities.
-        k_other_channels = [k for _, k, _ in other_channels_output]
-        k_agg = torch.cat(k_other_channels, dim=-2)
+        other_channels = [c for _, c in other_channels_output]
 
-        v_other_channels = [v for _, _, v in other_channels_output]
-        v_agg = torch.cat(v_other_channels, dim=-2)
+        # Weighting the other hannels
+        other_channels_weighted = [self.channel_weights[i] * c for i, c in enumerate(other_channels)]
+        other_channels_weighted = torch.stack(other_channels_weighted)
+
+        # Weighted sum of other channels 
+        other_channels_weighted_sum = torch.sum(other_channels_weighted, dim=0)
+
+        k_agg = self.to_k(other_channels_weighted_sum)
+
+        v_agg = self.to_v(other_channels_weighted_sum)
 
         x = self.sa(x_q, k_agg, v_agg) + x_q
         
+        x = self.layer_norm(x)
         x = self.ffwd(x) + x
         return x
 
 
-def pair(t):
-    return t if isinstance(t, tuple) else (t, t)
-
-
 class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, out_dim, dropout=0., end_w_dropout=True):
+    def __init__(self, dim, hidden_dim, out_dim):
         super().__init__()
         self.net = nn.Sequential(
-            nn.LayerNorm(dim),
+            #nn.LayerNorm(dim),
             nn.Linear(dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, out_dim)
@@ -102,6 +112,8 @@ class Attention(nn.Module):
         else:
             qkv = [q, k, v]
 
+        qkv = [torch.nn.functional.relu(c) for c in qkv]
+
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h=self.heads), qkv)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
@@ -122,11 +134,11 @@ class Transformer(nn.Module):
 
         modality_output_sizes = self.get_modality_output_sizes(inner_dim, num_chan)
 
+        self.layer_norm = nn.LayerNorm(sum(modality_output_sizes))
         self.output_ffwd = FeedForward(
             dim=sum(modality_output_sizes),
             hidden_dim=sum(emb_dims),
-            out_dim=out_dim,
-            end_w_dropout=False
+            out_dim=out_dim
         )
         
         self.layers = nn.ModuleList([])
@@ -134,22 +146,16 @@ class Transformer(nn.Module):
             depth_layers = nn.ModuleList([])
 
             for k in range(len(dims)):
-                #dim = dims[k]
                 mlp_dim = mlp_dims[k]
 
                 depth_layers.append(nn.ModuleList([
                     nn.LayerNorm(inner_dim),
                     Attention(q_dim=inner_dim, heads=heads, dim_head=dim_head, dropout=dropout),
-                    FeedForward(inner_dim, mlp_dim, inner_dim, dropout=dropout),
-                    nn.Linear(inner_dim, inner_dim, bias=True),
-                    nn.Linear(inner_dim, inner_dim, bias=True),
-                    nn.Linear(inner_dim, inner_dim, bias=True),
                     nn.LayerNorm(inner_dim),
+                    FeedForward(inner_dim, mlp_dim, inner_dim),
                     nn.LayerNorm(inner_dim),
-                    nn.LayerNorm(inner_dim),
-                    #CrossChannelTransformerEncoderLayer(input_dimension=inner_dim, number_of_heads=heads, 
-                    #                                    dim_head=dim_head, mlp_dims=mlp_dims, dropout=dropout, out_dim=dim)
-                    CrossChannelTransformerEncoderLayer(input_dimension=inner_dim, number_of_heads=heads, 
+                    nn.Linear(inner_dim, inner_dim, bias=True),
+                    CrossChannelTransformerEncoderLayer(input_dimension=inner_dim, dims=dims, number_of_heads=heads, 
                                                         dim_head=dim_head, mlp_dims=mlp_dims, dropout=dropout)
                 ]))
 
@@ -158,31 +164,26 @@ class Transformer(nn.Module):
     def forward(self, channels_output):
         for depth_layers in self.layers:
             # HCT blocks, one for each modality
-            for i, (x_norm, attn, ff, q_layer, k_layer, v_layer, q_norm, k_norm, v_norm, _) in enumerate(depth_layers):
+            for i, (x_norm_a, attn, x_norm_b, ff, x_norm_c, q_layer, _) in enumerate(depth_layers):
                 # Modality specific tensor
                 x = channels_output[i]
-                x = x_norm(x)
+                x = x_norm_a(x)
 
                 x = attn(x, x, x) + x
 
+                x = x_norm_b(x)
                 x = ff(x) + x
 
+                x = x_norm_c(x)
                 x_q = q_layer(x)
-                x_q = q_norm(x_q)
-
-                x_k = k_layer(x)
-                x_k = k_norm(x_k)
-
-                x_v = v_layer(x)
-                x_v = v_norm(x_v)
                 
-                channels_output[i] = (x_q, x_k, x_v)
+                channels_output[i] = (x_q, x)
 
             new_channels_output = []
-            # Cross attentions blocks, one for each modality
-            for i, (_, _, _, _, _, _, _, _, _, cross_attn) in enumerate(depth_layers):
+            # Cross attention blocks, one for each modality
+            for i, (_, _, _, _, _, _, cross_attn) in enumerate(depth_layers):
                 # Modality specific tensors
-                x_q, x_k, x_v = channels_output[i]
+                x_q, _ = channels_output[i]
                 x = cross_attn(
                     x_q, [h for n, h in enumerate(channels_output) if n != i]
                 )
@@ -197,14 +198,14 @@ class Transformer(nn.Module):
 
         modality_specific_emb_combined = torch.cat(modality_specific_emb, dim=-1)
 
+        modality_specific_emb_combined = self.layer_norm(modality_specific_emb_combined)
         out = self.output_ffwd(modality_specific_emb_combined)
 
         return out
 
-    #def get_modality_output_sizes(self, dims, num_chan):
-    #    return [dim * chan for dim, chan in zip(dims, num_chan)]
     def get_modality_output_sizes(self, inner_dim, num_chan):
-        return [inner_dim * chan for chan in num_chan]
+        max_num_chan = max(num_chan)
+        return [inner_dim * max_num_chan for _ in num_chan]
     
 
 class PositionalEncoding(nn.Module):
@@ -214,8 +215,14 @@ class PositionalEncoding(nn.Module):
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-torch.log(torch.tensor(10000.0)) / d_model))
+        
         pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
+        if pe.shape[1] % 2 == 0:
+            pe[:, 1::2] = torch.cos(position * div_term)
+        else: 
+            # In the case of uneven dimensionality, the last entry in the 
+            # position tensor must be ignored for the uneven indices. 
+            pe[:, 1::2] = torch.cos(position * div_term)[:, :-1]
         pe = pe.unsqueeze(0).transpose(0, 1)
 
         self.register_buffer('pe', pe)
@@ -225,7 +232,21 @@ class PositionalEncoding(nn.Module):
         return x
 
 
-class MultiChannelEncoderV1(BaseBenchmarkModel):
+class ProjectChannels(torch.nn.Module):
+    def __init__(self, chan, target_chan):
+        super().__init__()
+
+        self.project_channels = nn.Linear(chan, target_chan, bias=False) \
+                                    if chan != target_chan else nn.Identity()
+
+    def forward(self, x):
+        x = torch.transpose(x, -1, -2)
+        x = self.project_channels(x)
+        x = torch.transpose(x, -1, -2)
+        return x
+
+
+class MultiChannelEncoderV2(BaseBenchmarkModel):
     @staticmethod
     def add_model_options(parser_group):
         # These can vary between modalities
@@ -236,19 +257,18 @@ class MultiChannelEncoderV1(BaseBenchmarkModel):
 
         # These three must match for all modalities
         parser_group.add_argument("--depth", default=4, type=int, help="Depth of kernels")
-        # The Multi-Channel Transformer form Camgoz et al. (https://arxiv.org/pdf/2009.00299) 
-        # only uses a single head to reduce the number of parameters. 
-        #parser_group.add_argument("--heads", default=1, type=int, help="Number of heads")
         parser_group.add_argument("--heads", default=16, type=int, help="Number of heads")
         parser_group.add_argument("--dim_head", default=16, type=int, help="Dimension of heads")
 
         parser_group.add_argument("--dropout", default=0.2, type=float, help="Dropout rate")
         
-    def channel_embedding(self, dim, hidden_dim, chan):
+    def channel_embedding(self, dim, hidden_dim, chan, target_chan):
         return nn.Sequential(
-            nn.Linear(dim, hidden_dim),
-            nn.BatchNorm1d(chan),
-            nn.Softsign()
+            nn.Linear(dim, hidden_dim), 
+            # In the Multi-Chanel Transformer by Chang et al. (https://arxiv.org/pdf/2102.03951), all 
+            # modalities must have the same number of channels so that their weighted sum can be calculated.
+            # Therefore, we project all modalities to the largest number of channels among them. 
+            ProjectChannels(chan, target_chan)
         )
 
     def __init__(self, *, num_time, num_chan, mlp_dim,
@@ -257,10 +277,16 @@ class MultiChannelEncoderV1(BaseBenchmarkModel):
 
         inner_dim = dim_head * heads
 
+        target_num_chan = max(num_chan)
+
         self.embedders = nn.ModuleList([])
         for dim, chan in zip(num_time, num_chan):
-            embedder = self.channel_embedding(dim=dim, hidden_dim=inner_dim, chan=chan)
-            #embedder = self.channel_embedding(dim=dim, hidden_dim=dim, chan=chan)
+            embedder = self.channel_embedding(
+                dim=dim, 
+                hidden_dim=inner_dim, 
+                chan=chan, 
+                target_chan=target_num_chan
+            )
             self.embedders.append(embedder)
 
         self.pos_embeddings = nn.ParameterList([])
@@ -273,11 +299,9 @@ class MultiChannelEncoderV1(BaseBenchmarkModel):
             mlp_dims=mlp_dim, emb_dims=emb_dim, out_dim=out_dim, dropout=dropout
         )
 
-        
     def forward(self, channels):
         for i, chan in enumerate(channels):
             chan = self.embedders[i](chan)
-            #chan += self.pos_embeddings[i]
             chan = self.pos_embeddings[i](chan)
             channels[i] = chan
 
@@ -298,7 +322,6 @@ if __name__ == "__main__":
         emb_dim=[256, 16, 16, 16],
         depth=4,
         heads=16,
-        #heads=1,
         dim_head=16,
         dropout=0.,
         out_dim=2

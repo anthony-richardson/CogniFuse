@@ -26,20 +26,22 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_
 -----------
 
 multi channel encoder v1 old:
+
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name MultiChannelEncoderV1Old.MultiChannelEncoderV1 --task SwitchingTask3Presence --cuda 1 --device 3
 (Parameters: 5548050)
 
 -----------
 
 multi channel encoder v1:
+
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name MultiChannelEncoderV1.MultiChannelEncoderV1 --task SwitchingTask3Presence --cuda 1 --device 3
 (Parameters: 11100856)
 
 -----------
 
 multi channel encoder v2:
-
-(Parameters: )
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name MultiChannelEncoderV2.MultiChannelEncoderV2 --task SwitchingTask3Presence --cuda 1 --device 0
+(Parameters: 14609666)
 
 -----------
 
@@ -51,12 +53,14 @@ Linear scaling factor applied to mlp_dim, dim_head, heads, num_kernel, emb_dim (
 -----------
 
 multi channel encoder v1 old (scaled):
+
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name MultiChannelEncoderV1Old.MultiChannelEncoderV1 --task SwitchingTask3Presence --cuda 1 --device 4 --mlp_dim 14 14 14 14 --dim_head 14 --emb_dim 220 14 14 14
 (Parameters: 4950036)
 
 -----------
 
 multi channel encoder v1 (scaled):
+
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name MultiChannelEncoderV1.MultiChannelEncoderV1 --task SwitchingTask3Presence --cuda 1 --device 4 --mlp_dim 10 10 10 10 --heads 13 --dim_head 13 --emb_dim 170 10 10 10
 (Parameters: 4950098, scaling factor: 0.65)
 
@@ -64,7 +68,8 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_
 
 multi channel encoder v2 (scaled):
 
-(Parameters: )
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name MultiChannelEncoderV2.MultiChannelEncoderV2 --task SwitchingTask3Presence --cuda 1 --device 0 --mlp_dim 9 9 9 9 --heads 12 --dim_head 12 --emb_dim 161 10 10 10
+(Parameters: 4950975, scaling factor: 0.63)
 
 -----------
 

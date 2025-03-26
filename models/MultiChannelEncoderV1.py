@@ -1,5 +1,5 @@
 # This is an implementation of the Encoder of the Multi-Channel Transformer from 
-# Camgoz et a. (https://arxiv.org/pdf/2009.00299), repurposed for classifiaction tasks. 
+# Camgoz et al. (https://arxiv.org/pdf/2009.00299), repurposed for classifiaction tasks. 
 # Since the authors do not provide any source code, this implementation was done by 
 # following the papers description as close as possible. To produce a prediction from 
 # the multiple encoder outputs (one output for each modality), we concatenate them 
@@ -32,7 +32,7 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
         )
 
     def forward(self, x_q, x_q_norm, other_channels_output):
-        # Stacking the other channels on the token dimension.
+        # Stacking the other channels.
         k_other_channels = [k_norm for _, _, k_norm, _ in other_channels_output]
         k_norm_agg = torch.cat(k_other_channels, dim=-2)
 
@@ -170,7 +170,7 @@ class Transformer(nn.Module):
                 channels_output[i] = (x_q, x_q_norm, x_k_norm, x_v_norm)
 
             new_channels_output = []
-            # Cross attentions blocks, one for each modality
+            # Cross attention blocks, one for each modality
             for i, (_, _, _, _, _, _, _, _, _, cross_attn) in enumerate(depth_layers):
                 # Modality specific tensors
                 x_q, x_q_norm, _, _ = channels_output[i]
