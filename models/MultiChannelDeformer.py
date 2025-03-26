@@ -27,8 +27,7 @@ class CrossChannelTransformerEncoderLayer(nn.Module):
 
 
     def forward(self, x, x_q, other_channels_output):
-        # Stacking the other channels on the kernel dimension.
-        # This allows the use of different numbers of kernels for the modalities.
+        # Stacking the other channels on the token dimension.
         k_other_channels = [k for _, _, k, _ in other_channels_output]
         k_agg = torch.cat(k_other_channels, dim=-2)
 
