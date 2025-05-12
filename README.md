@@ -13,6 +13,8 @@ Continuously monitored physiological signals carry rich information about the hu
 
 Therefore, we provide a public dataset and benchmarking system for multi-task multimodal biosignal fusion during activities of daily living. To accelerate future research on biosinal fusion, this benchmarking system was developed with careful attention to comparability, robustness, reproducibility and accessibility. In particular, the process of adding custom models in a comparible and reproducible way is highly simplified and does not require any modifications of the underlying code base.
 
+In addition, we provide the source code of a variety of Multimodal Architectures. This includes our proposed Multi-Channel Deformer, which outperforms other approaches developed by or in collaboration with industry leaders such as Microsoft and Amazon. 
+
 ## Getting started 
 
 The dataset needed to run the benchmark can be accessed [here](). A detailed description of the data is provided in our [paper](). The dataset contains 119.435 samples from 134 participants. Each sample is a collection of simultaneously starting chunks of electroencephalogram (`eeg`), photoplethysmography (`ppg`), electrodermal activity (`eda`) and respiration (`resp`) data.  
