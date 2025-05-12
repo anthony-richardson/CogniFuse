@@ -45,6 +45,12 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_
 
 -----------
 
+PHemoNet:
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name PHemoNet.HyperFuseNet --task SwitchingTask3Presence --cuda 1 --device 0 --drop_last 1
+(Parameters: 15235586)
+
+-----------
+
 Scaling procedure: 
 +- 0.1% (4952) Parameters compared to multi channel deformer (4952962 * 0.001 = 4952.962)
 --> lower limit: 4948010, upper limit: 4957914
@@ -70,6 +76,12 @@ multi channel encoder v2 (scaled):
 
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name MultiChannelEncoderV2.MultiChannelEncoderV2 --task SwitchingTask3Presence --cuda 1 --device 0 --mlp_dim 9 9 9 9 --heads 12 --dim_head 12 --emb_dim 161 10 10 10
 (Parameters: 4950975, scaling factor: 0.63)
+
+-----------
+
+PHemoNet (scaled):
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m run_benchmark --multimodal 1  --model_name PHemoNet.HyperFuseNet --task SwitchingTask3Presence --cuda 1 --device 0 --drop_last 1 --modality_units 432 220 220 220 --fusion_units 432
+(Parameters: 4956930, scaling factor: 0.43)
 
 -----------
 

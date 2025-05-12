@@ -28,14 +28,16 @@ def main():
         batch_size=args.batch_size,
         tasks=task_tools.get_mapper().keys(),
         data_dir=data_dir,
-        split='train'
+        split='train',
+        drop_last=bool(args.drop_last)
     )
 
     validation_data = get_data_loader(
         batch_size=args.batch_size,
         tasks=task_tools.get_mapper().keys(),
         data_dir=data_dir,
-        split='validation'
+        split='validation',
+        drop_last=bool(args.drop_last)
     )
 
     train_platform = TensorboardPlatform(log_dir=save_dir, args_dir=base_dir)

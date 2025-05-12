@@ -197,6 +197,7 @@ def add_data_options(parser, cross_validate=False):
 def add_training_options(parser):
     group = parser.add_argument_group('deformer_training')
     group.add_argument("--batch_size", default=32, type=int, help="Batch size during training.")
+    group.add_argument("--drop_last", choices=[0, 1], default=0, type=int, help="Whether to drop the last batch.")
     group.add_argument("--lr", default=1e-05, type=float, help="Learning rate.")
     
     group.add_argument("--weight_decay", default=0.0001,
@@ -332,7 +333,8 @@ def train_args(cross_validate=False):
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
 
     if is_multimodal():
-        default_save_dir = os.path.join(os.getcwd(), 'save', 
+        # TODO: change back
+        default_save_dir = os.path.join(os.getcwd(), '..', '..', '..', 'data', 'antmen', 'save', 
         				'multimodal', model_name, timestamp)
     else:
         modality = dummy_args.modality

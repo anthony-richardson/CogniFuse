@@ -1,9 +1,9 @@
 # This is an implementation of the Encoder of the Multi-Channel Transformer from 
 # Chang et al. (https://arxiv.org/pdf/2102.03951), repurposed for classifiaction tasks. 
 # Since the authors do not provide any source code, this implementation was done by 
-# closely following the papers description. The produce a prediction from the multiple 
-# encoder outputs (one output for each modality), we concatenate them and pass the result 
-# through a multi layer perceptron. 
+# following the papers description as close as possible. To produce a prediction from 
+# the multiple encoder outputs (one output for each modality), we concatenate them 
+# and pass the result through a multi layer perceptron. 
 
 import torch
 from torch import nn

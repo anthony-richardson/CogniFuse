@@ -51,13 +51,13 @@ class CogniFitDataset(torch.utils.data.Dataset):
         return modality_data, meta_info
 
 
-def get_data_loader(batch_size, tasks, data_dir, split, shuffle=True):
+def get_data_loader(batch_size, tasks, data_dir, split, shuffle=True, drop_last=False):
     split_file = split + '.npy'
     data_path = os.path.join(data_dir, split_file)
     dataset = CogniFitDataset(data_path=data_path, tasks=tasks)
     loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=shuffle,
-        num_workers=8, drop_last=False
+        num_workers=8, drop_last=drop_last
     )
     return loader
 
