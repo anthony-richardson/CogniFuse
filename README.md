@@ -1,8 +1,8 @@
 # CogniFuse
 
-This is the official code base of the paper [CogniFuse and Multimodal Deformers: A Unified Approach for Benchmarking and Modeling Biosignal Fusion](). Please cite it when using this code or benchmark in orignal or modified form. 
+This is the official code base of the paper [CogniFuse and Multimodal Deformers: A Unified Approach for Benchmarking and Modeling Biosignal Fusion](https://ieeexplore.ieee.org/abstract/document/11254862). Please cite it when using this code or benchmark in orignal or modified form. 
 ```
-TODO
+Richardson, A., Beetz, M., Schultz, T., & Putze, F. (2025, July). CogniFuse and Multimodal Deformers: A Unified Approach for Benchmarking and Modeling Biosignal Fusion. In 2025 47th Annual International Conference of the IEEE Engineering in Medicine and Biology Society (EMBC) (pp. 1-7). IEEE.
 ```
 
 Continuously monitored physiological signals carry rich information about the human body and the biological processes happening within. Extracting this information from casually collected biosignal data in activities of daily living holds great potential to revolutionize real-time monitoring of physical and mental states outside of highly controlled clinical conditions. However, this potential comes with a number of difficulties: 
@@ -71,7 +71,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python -m train.run_benchmark --model_name MyScr
 ```
 
 ## Reproducibility
-The benchmarking system is configured to assure full reproducability, by replacing all non-deterministic algorithms, such as dropout during training, with deterministic alternatives. An exact guide for reprocuding the benchmark results from our [paper]() can be found [here](save/README.md). 
+The benchmarking system is configured to assure full reproducability, by replacing all non-deterministic algorithms, such as dropout during training, with deterministic alternatives. An exact guide for reprocuding the benchmark results from our [paper](https://ieeexplore.ieee.org/abstract/document/11254862) can be found [here](save/README.md). 
 
 ## License
 This code is distributed under the [CC-By Attribution 4.0 International Public License](LICENSE).
